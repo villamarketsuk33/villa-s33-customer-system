@@ -310,8 +310,10 @@ action:
 "saveCustomer",
 
 
+
 type:
 "คำชมลูกค้า",
+
 
 
 detail:
@@ -342,11 +344,6 @@ document
 
 
 
-userName:
-lineUser.name,
-
-
-
 lineUserId:
 lineUser.id
 
@@ -354,6 +351,18 @@ lineUser.id
 };
 
 
+
+
+document
+.getElementById("msg")
+.innerHTML =
+"กำลังบันทึก...";
+
+
+
+
+
+try{
 
 
 const response =
@@ -365,7 +374,14 @@ API_URL,
 
 method:"POST",
 
+headers:{
+
+"Content-Type":"text/plain"
+
+},
+
 body:
+
 JSON.stringify(data)
 
 }
@@ -380,6 +396,28 @@ await response.json();
 
 
 alert(result.message);
+
+
+
+document
+.getElementById("msg")
+.innerHTML =
+result.message;
+
+
+
+}
+
+
+catch(error){
+
+
+alert(
+"Error : "+error.message
+);
+
+
+}
 
 
 
