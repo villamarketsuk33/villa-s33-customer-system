@@ -3,43 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>คำชมลูกค้า - Villa Market S33</title>
+    <title>Complaint - Villa Market S33</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
         .container { max-width: 480px; margin: auto; }
-        .header { background: #008f39; color: white; padding: 25px; border-radius: 18px; text-align: center; }
-        .header h1 { margin: 0; font-size: 26px; }
-        .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
+        .header { background: #d71920; color: white; padding: 25px; border-radius: 18px; text-align: center; }
+        .card { background: white; padding: 20px; margin-top: 15px; border-radius: 18px; }
         label { font-weight: bold; display: block; margin-top: 15px; }
         input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
         textarea { height: 120px; }
-        button { width: 100%; height: 55px; margin-top: 20px; border: none; border-radius: 12px; background: #008f39; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .line-user { background: #eef8ef; padding: 12px; border-radius: 10px; }
-        .status { font-size: 13px; color: #777; margin-top: 15px; }
+        button { width: 100%; height: 55px; margin-top: 20px; background: #d71920; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .line-box { background: #fff0f0; padding: 12px; border-radius: 10px; }
+        .status { margin-top: 15px; font-size: 13px; color: #666; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>🟢 คำชมลูกค้า</h1>
+        <h1>🔴 คอมเพลนลูกค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
     <div class="card">
-        <div class="line-user">
-            ผู้บันทึก: <span id="userName">กำลังโหลด...</span>
+        <div class="line-box">
+            ผู้รับเรื่อง: <span id="userName">กำลังโหลด...</span>
         </div>
 
-        <label>รายละเอียดคำชมจากลูกค้า</label>
-        <textarea id="detail" placeholder="เช่น ลูกค้าชื่นชมพนักงานบริการดี ช่วยแนะนำสินค้า"></textarea>
+        <label>รายละเอียดปัญหาจากลูกค้า</label>
+        <textarea id="detail" placeholder="ระบุรายละเอียดปัญหา"></textarea>
 
         <label>ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <input id="customer" placeholder="ถ้ามี" />
+        <input id="customer" placeholder="ถ้ามี">
 
-        <label>Action จากพนักงาน</label>
-        <textarea id="action" placeholder="ดำเนินการอย่างไร"></textarea>
+        <label>การดำเนินการแก้ไข</label>
+        <textarea id="requestAction" placeholder="หัวหน้างานดำเนินการอย่างไร"></textarea>
 
         <label>สถานะ</label>
         <select id="status">
@@ -48,7 +47,7 @@
         </select>
 
         <button onclick="saveData()">บันทึกข้อมูล</button>
-        <div class="status" id="msg">สถานะ : พร้อมใช้งาน</div>
+        <div id="msg" class="status">สถานะ : พร้อมใช้งาน</div>
     </div>
 </div>
 
@@ -82,10 +81,10 @@
 
         const data = {
             action: "saveCustomer",
-            type: "คำชมลูกค้า",
+            type: "คอมเพลนลูกค้า",
             detail: detail,
             customer: document.getElementById("customer").value,
-            requestAction: document.getElementById("action").value,
+            requestAction: document.getElementById("requestAction").value,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
