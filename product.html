@@ -1,488 +1,112 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
-
-
 <head>
-
-<meta charset="UTF-8">
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-
-<title>
-ติดตามสินค้า - Villa Market S33
-</title>
-
-
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-
-<style>
-
-
-*{
-box-sizing:border-box;
-}
-
-
-body{
-
-margin:0;
-
-padding:15px;
-
-background:#f3f5f8;
-
-font-family:
-
-Arial,
-"Noto Sans Thai",
-sans-serif;
-
-}
-
-
-
-.container{
-
-max-width:480px;
-
-margin:auto;
-
-}
-
-
-
-.header{
-
-background:#005bbb;
-
-color:white;
-
-padding:25px;
-
-border-radius:18px;
-
-text-align:center;
-
-}
-
-
-
-.card{
-
-background:white;
-
-padding:20px;
-
-margin-top:15px;
-
-border-radius:18px;
-
-}
-
-
-
-.line-box{
-
-background:#eef5ff;
-
-padding:12px;
-
-border-radius:10px;
-
-}
-
-
-
-label{
-
-display:block;
-
-font-weight:bold;
-
-margin-top:15px;
-
-}
-
-
-
-input,
-textarea,
-select{
-
-
-width:100%;
-
-padding:12px;
-
-font-size:16px;
-
-border-radius:10px;
-
-border:1px solid #ccc;
-
-margin-top:8px;
-
-
-}
-
-
-
-textarea{
-
-height:100px;
-
-}
-
-
-
-button{
-
-width:100%;
-
-height:55px;
-
-margin-top:20px;
-
-background:#005bbb;
-
-color:white;
-
-border:none;
-
-border-radius:12px;
-
-font-size:18px;
-
-font-weight:bold;
-
-}
-
-
-
-.status{
-
-margin-top:15px;
-
-font-size:13px;
-
-color:#666;
-
-}
-
-
-</style>
-
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ติดตามสินค้า - Villa Market S33</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
+        .container { max-width: 480px; margin: auto; }
+        .header { background: #005bbb; color: white; padding: 25px; border-radius: 18px; text-align: center; }
+        .card { background: white; padding: 20px; margin-top: 15px; border-radius: 18px; }
+        .line-box { background: #eef5ff; padding: 12px; border-radius: 10px; }
+        label { display: block; font-weight: bold; margin-top: 15px; }
+        input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
+        textarea { height: 100px; }
+        button { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .status { margin-top: 15px; font-size: 13px; color: #666; }
+    </style>
 </head>
-
-
-
 <body>
-
-
 <div class="container">
+    <div class="header">
+        <h1>🔵 ติดตามสินค้า</h1>
+        <p>Villa Market สุขุมวิท 33</p>
+    </div>
 
+    <div class="card">
+        <div class="line-box">
+            ผู้รับเรื่อง: <span id="userName">กำลังโหลด...</span>
+        </div>
 
+        <label>รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ</label>
+        <textarea id="detail" placeholder="เช่น ลูกค้าสอบถาม Dr Pepper ขนาด 355 ml"></textarea>
 
-<div class="header">
+        <label>ชื่อลูกค้า / เบอร์ติดต่อ</label>
+        <input id="customer" placeholder="ถ้ามี">
 
-<h1>
-🔵 ติดตามสินค้า
-</h1>
+        <label>การดำเนินการ / ผลการตรวจสอบ</label>
+        <textarea id="requestAction" placeholder="เช่น ตรวจสอบสาขาอื่น / ประสานจัดซื้อ"></textarea>
 
-<p>
-Villa Market สุขุมวิท 33
-</p>
+        <label>สถานะ</label>
+        <select id="status">
+            <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+            <option value="รอดำเนินการ">รอดำเนินการ</option>
+        </select>
 
+        <button onclick="saveData()">บันทึกข้อมูล</button>
+        <div id="msg" class="status">สถานะ : พร้อมใช้งาน</div>
+    </div>
 </div>
-
-
-
-
-<div class="card">
-
-
-<div class="line-box">
-
-ผู้รับเรื่อง:
-
-<span id="userName">
-กำลังโหลด...
-</span>
-
-
-</div>
-
-
-
-
-<label>
-รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ
-</label>
-
-
-<textarea
-id="detail"
-placeholder="เช่น ลูกค้าสอบถาม Dr Pepper ขนาด 355 ml">
-</textarea>
-
-
-
-
-
-<label>
-ชื่อลูกค้า / เบอร์ติดต่อ
-</label>
-
-
-<input
-id="customer"
-placeholder="ถ้ามี">
-
-
-
-
-
-<label>
-การดำเนินการ / ผลการตรวจสอบ
-</label>
-
-
-<textarea
-id="requestAction"
-placeholder="เช่น ตรวจสอบสาขาอื่น / ประสานจัดซื้อ">
-</textarea>
-
-
-
-
-
-<label>
-สถานะ
-</label>
-
-
-<select id="status">
-
-
-<option value="เสร็จสิ้น">
-เสร็จสิ้น
-</option>
-
-
-<option value="รอดำเนินการ">
-รอดำเนินการ
-</option>
-
-
-</select>
-
-
-
-
-<button onclick="saveData()">
-
-บันทึกข้อมูล
-
-</button>
-
-
-
-<div id="msg" class="status">
-
-สถานะ : เริ่มต้น
-
-</div>
-
-
-</div>
-
-
-</div>
-
-
-
-
 
 <script>
-
-
-const LIFF_ID =
-"2011171771-2kU5r1Xp";
-
-
-
-const API_URL =
-"https://script.google.com/macros/s/AKfycbx6X9CED9Pewba4t64zCJWk0Q3gf__iQ_MhXY45tRYYTj0nclmOzp13BP-w6vdKSGOKFw/exec";
-
-
-
-let lineUser={};
-
-
-
-
-
-async function initLINE(){
-
-
-await liff.init({
-
-liffId:LIFF_ID
-
-});
-
-
-
-if(!liff.isLoggedIn()){
-
-
-liff.login();
-
-return;
-
-
-}
-
-
-
-const profile =
-await liff.getProfile();
-
-
-
-lineUser={
-
-
-id:
-profile.userId,
-
-
-name:
-profile.displayName
-
-
-};
-
-
-
-document
-.getElementById("userName")
-.innerHTML =
-profile.displayName;
-
-
-}
-
-
-
-
-
-
-async function saveData(){
-
-
-
-const data={
-
-
-action:
-"saveCustomer",
-
-
-
-type:
-"ติดตามสินค้า_2",
-
-
-
-detail:
-document
-.getElementById("detail")
-.value,
-
-
-
-customer:
-document
-.getElementById("customer")
-.value,
-
-
-
-requestAction:
-document
-.getElementById("requestAction")
-.value,
-
-
-
-status:
-document
-.getElementById("status")
-.value,
-
-
-
-lineUserId:
-lineUser.id
-
-
-};
-
-
-
-
-
-const response =
-await fetch(
-
-API_URL,
-
-{
-
-method:"POST",
-
-headers:{
-
-"Content-Type":"text/plain"
-
-},
-
-body:
-
-JSON.stringify(data)
-
-}
-
-);
-
-
-
-
-
-const result =
-await response.json();
-
-
-
-alert(result.message);
-
-
-
-}
-
-
-
-initLINE();
-
-
+    const LIFF_ID = "2011171771-2kU5r1Xp";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
+    let lineUser = { id: "", name: "" };
+
+    async function initLINE() {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            const profile = await liff.getProfile();
+            lineUser = { id: profile.userId, name: profile.displayName };
+            document.getElementById("userName").innerText = profile.displayName;
+        } catch (e) {
+            document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+            document.getElementById("msg").innerText = "Error: " + e.message;
+        }
+    }
+
+    async function saveData() {
+        const detail = document.getElementById("detail").value.trim();
+        if (detail === "") {
+            alert("กรุณากรอกรายละเอียด");
+            return;
+        }
+
+        const data = {
+            action: "saveCustomer",
+            type: "ติดตามสินค้า_2",
+            detail: detail,
+            customer: document.getElementById("customer").value,
+            requestAction: document.getElementById("requestAction").value,
+            status: document.getElementById("status").value,
+            userName: lineUser.name,
+            lineUserId: lineUser.id
+        };
+
+        try {
+            document.getElementById("msg").innerText = "กำลังบันทึกข้อมูล...";
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            alert(result.message || "บันทึกสำเร็จ");
+            if (result.success) location.reload();
+        } catch (err) {
+            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+            document.getElementById("msg").innerText = "Error: " + err.message;
+        }
+    }
+
+    initLINE();
 </script>
-
-
 </body>
-
-
 </html>
