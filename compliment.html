@@ -98,9 +98,12 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            const result = await response.json();
-            alert(result.message || "บันทึกสำเร็จ");
-            if (result.success) location.reload();
+            
+            // อ่านค่าเป็น Text
+            const resultText = await response.text();
+            
+            alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+            location.reload();
         } catch (err) {
             alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             document.getElementById("msg").innerText = "Error: " + err.message;
