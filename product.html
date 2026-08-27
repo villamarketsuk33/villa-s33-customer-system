@@ -1,153 +1,248 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ติดตามสินค้า - Villa Market S33</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
-        .container { max-width: 480px; margin: auto; }
-        .header { background: #005bbb; color: white; padding: 25px; border-radius: 18px; text-align: center; }
-        .header h1 { margin: 0; font-size: 26px; }
-        .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
-        label { font-weight: bold; display: block; margin-top: 15px; }
-        input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
-        textarea { height: 100px; }
-        button { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .line-box { background: #eef5ff; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .status { font-size: 13px; color: #666; margin-top: 15px; }
-        .lang-btn-group { display: flex; gap: 5px; }
-        .lang-btn { background: #fff; border: 1px solid #005bbb; padding: 4px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; font-weight: bold; color: #005bbb; }
-        .lang-btn.active { background: #005bbb; color: white; }
-        #access-denied { display: none; text-align: center; padding: 30px 15px; }
-        .reg-btn { background: #d71920; color: white; border: none; padding: 12px 20px; border-radius: 10px; display: inline-block; margin-top: 15px; font-weight: bold; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>คำชมลูกค้า - Villa Market S33</title>
+  <!-- LIFF SDK -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { font-family: 'Sukhumvit Set', 'Kanit', Arial, sans-serif; }
+    .bg-vm-green { background-color: #008f39; }
+    .border-vm-green { border-color: #008f39; }
+    .text-vm-green { color: #008f39; }
+  </style>
 </head>
-<body>
-<div class="container">
-    <div class="header">
-        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ติดตามสินค้า</h1>
-        <p>Villa Market สุขุมวิท 33</p>
+<body class="bg-gray-100 min-h-screen p-4">
+  <div class="max-w-md mx-auto bg-white rounded-2xl shadow-md overflow-hidden md:max-w-2xl p-6">
+    
+    <!-- ส่วนหัวข้อฟอร์ม -->
+    <div class="bg-vm-green text-white p-6 rounded-xl text-center relative mb-4">
+      <h1 id="lbl-title" class="text-2xl font-bold">🟢 คำชมลูกค้า</h1>
+      <p id="lbl-subtitle" class="text-sm opacity-90 mt-1">Villa Market สุขุมวิท 33</p>
     </div>
 
-    <div class="card" id="access-denied">
-        <h2 style="color:#d71920; margin-top:0;" class="i18n" data-th="⚠️ ไม่พบข้อมูลพนักงาน" data-en="⚠️ Employee Not Found">⚠️ ไม่พบข้อมูลพนักงาน</h2>
-        <p class="i18n" data-th="กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ" data-en="Please register as an employee before using the system.">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
-        <button class="reg-btn i18n" onclick="liff.closeWindow()" data-th="ปิดหน้าต่าง" data-en="Close Window">ปิดหน้าต่าง</button>
+    <!-- ส่วนแสดงผู้บันทึก & ปุ่มสลับภาษา -->
+    <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex justify-between items-center mb-4 text-sm">
+      <div class="text-gray-700">
+        <span id="lbl-recorder-title" class="font-bold">ผู้บันทึก:</span> 
+        <span id="userName" class="font-medium text-vm-green">กำลังโหลด...</span>
+      </div>
+      <div class="flex gap-1">
+        <button type="button" id="btn-th" onclick="switchLanguage('TH')" class="px-3 py-1 text-xs font-bold rounded-full bg-vm-green text-white transition">TH</button>
+        <button type="button" id="btn-en" onclick="switchLanguage('EN')" class="px-3 py-1 text-xs font-bold rounded-full bg-white text-vm-green border border-vm-green transition">EN</button>
+      </div>
     </div>
 
-    <div class="card" id="form-content" style="display:none;">
-        <div class="line-box">
-            <div><span class="i18n" data-th="ผู้รับเรื่อง:" data-en="Receiver:">ผู้รับเรื่อง:</span> <span id="userName">กำลังโหลด...</span></div>
-            <div class="lang-btn-group">
-                <button type="button" class="lang-btn active" id="btn-th" onclick="switchLanguage('TH')">TH</button>
-                <button type="button" class="lang-btn" id="btn-en" onclick="switchLanguage('EN')">EN</button>
-            </div>
-        </div>
+    <!-- ฟอร์มกรอกข้อมูล -->
+    <form id="complimentForm" onsubmit="handleSubmit(event)" class="space-y-4">
+      
+      <!-- 1. รายละเอียดคำชม -->
+      <div>
+        <label id="lbl-detail" class="block text-sm font-bold text-gray-700 mb-1">รายละเอียดคำชมจากลูกค้า *</label>
+        <textarea id="detail" rows="3" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="เช่น ลูกค้าชื่นชมพนักงานบริการดี ช่วยแนะนำสินค้า"></textarea>
+      </div>
 
-        <label class="i18n" data-th="รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ" data-en="Product Details / Customer Request">รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ</label>
-        <textarea id="detail" class="i18n-ph" data-th-ph="เช่น ลูกค้าสอบถาม Dr Pepper ขนาด 355 ml" data-en-ph="e.g., Customer inquiry about Dr Pepper 355ml"></textarea>
+      <!-- 2. ชื่อลูกค้า / เบอร์ติดต่อ -->
+      <div>
+        <label id="lbl-customer" class="block text-sm font-bold text-gray-700 mb-1">ชื่อลูกค้า / เบอร์ติดต่อ</label>
+        <input type="text" id="customer" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ถ้ามี (เช่น คุณสมชาย 081-xxx-xxxx)">
+      </div>
 
-        <label class="i18n" data-th="ชื่อลูกค้า / เบอร์ติดต่อ" data-en="Customer Name / Contact">ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional">
+      <!-- 3. Action จากพนักงาน -->
+      <div>
+        <label id="lbl-action" class="block text-sm font-bold text-gray-700 mb-1">Action จากพนักงาน</label>
+        <textarea id="action" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="ดำเนินการอย่างไร"></textarea>
+      </div>
 
-        <label class="i18n" data-th="การดำเนินการ / ผลการตรวจสอบ" data-en="Action / Follow-up Status">การดำเนินการ / ผลการตรวจสอบ</label>
-        <textarea id="requestAction" class="i18n-ph" data-th-ph="เช่น ตรวจสอบสาขาอื่น / ประสานจัดซื้อ" data-en-ph="e.g., Check other branches / Contact purchasing"></textarea>
-
-        <label class="i18n" data-th="สถานะ" data-en="Status">สถานะ</label>
-        <select id="status">
-            <option value="เสร็จสิ้น" class="i18n" data-th="เสร็จสิ้น" data-en="Completed">เสร็จสิ้น</option>
-            <option value="รอดำเนินการ" class="i18n" data-th="รอดำเนินการ" data-en="Pending">รอดำเนินการ</option>
+      <!-- 4. สถานะ -->
+      <div>
+        <label id="lbl-status" class="block text-sm font-bold text-gray-700 mb-1">สถานะ *</label>
+        <select id="status" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+          <option value="เสร็จสิ้น">เสร็จสิ้น (Completed)</option>
+          <option value="รอดำเนินการ">รอดำเนินการ (Pending)</option>
         </select>
+      </div>
 
-        <button onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
-        <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
-    </div>
-</div>
+      <!-- ปุ่มบันทึก -->
+      <button type="submit" id="btn-submit" class="w-full bg-vm-green text-white py-3 px-4 rounded-xl hover:bg-green-700 transition duration-200 font-bold text-lg mt-4 shadow-md">
+        บันทึกข้อมูล
+      </button>
 
-<script>
-    const LIFF_ID = "2011171771-2kU5r1Xp";
+      <div class="text-xs text-gray-500 text-center mt-2">
+        <span id="lbl-status-title">สถานะ :</span> <span id="status-text" class="font-medium text-gray-700">พร้อมใช้งาน</span>
+      </div>
+
+    </form>
+  </div>
+
+  <script>
+    // ⚠️ ตั้งค่า LIFF ID และ API URL
+    const MY_LIFF_ID = "2011171771-2kU5r1Xp"; 
     const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
-    let lineUser = {};
-    let currentLang = 'TH';
 
+    let userProfile = null;
+    let currentLang = "TH";
+
+    // เริ่มต้นทำงานเมื่อโหลดหน้าเว็บ
+    window.onload = async function() {
+      try {
+        await liff.init({ liffId: MY_LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+        userProfile = await liff.getProfile();
+        document.getElementById("userName").innerText = userProfile.displayName;
+        
+        // ตรวจสอบสิทธิ์พนักงานและดึงภาษาตั้งต้น
+        await fetchUserLang(userProfile.userId);
+      } catch (err) {
+        console.error("LIFF Init Error:", err);
+        document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+        document.getElementById("status-text").innerText = "Error: " + err.message;
+      }
+    };
+
+    // ตรวจสอบสิทธิ์พนักงานจากระบบ
+    async function fetchUserLang(lineUserId) {
+      try {
+        const res = await fetch(`${API_URL}?action=getUserLang&lineUserId=${lineUserId}`);
+        const data = await res.json();
+        
+        if (!data.registered) {
+          Swal.fire({
+            icon: 'error',
+            title: 'ไม่พบสิทธิ์การใช้งาน',
+            text: 'กรุณาติดต่อผู้ดูแลระบบเพื่อลงทะเบียนพนักงานก่อนใช้งาน',
+            allowOutsideClick: false
+          }).then(() => { liff.closeWindow(); });
+          return;
+        }
+
+        currentLang = data.lang || "TH";
+        switchLanguage(currentLang);
+      } catch (e) {
+        console.error("Fetch Lang Error:", e);
+      }
+    }
+
+    // ฟังก์ชันสลับภาษา UI
     function switchLanguage(lang) {
-        currentLang = lang;
-        document.getElementById('btn-th').classList.toggle('active', lang === 'TH');
-        document.getElementById('btn-en').classList.toggle('active', lang === 'EN');
+      currentLang = lang;
+      
+      const btnTh = document.getElementById('btn-th');
+      const btnEn = document.getElementById('btn-en');
+      
+      if (lang === 'TH') {
+        btnTh.className = "px-3 py-1 text-xs font-bold rounded-full bg-vm-green text-white transition";
+        btnEn.className = "px-3 py-1 text-xs font-bold rounded-full bg-white text-vm-green border border-vm-green transition";
+        
+        document.getElementById('lbl-title').innerText = "🟢 คำชมลูกค้า";
+        document.getElementById('lbl-subtitle').innerText = "Villa Market สุขุมวิท 33";
+        document.getElementById('lbl-recorder-title').innerText = "ผู้บันทึก:";
+        document.getElementById('lbl-detail').innerText = "รายละเอียดคำชมจากลูกค้า *";
+        document.getElementById('detail').placeholder = "เช่น ลูกค้าชื่นชมพนักงานบริการดี ช่วยแนะนำสินค้า";
+        document.getElementById('lbl-customer').innerText = "ชื่อลูกค้า / เบอร์ติดต่อ";
+        document.getElementById('customer').placeholder = "ถ้ามี (เช่น คุณสมชาย 081-xxx-xxxx)";
+        document.getElementById('lbl-action').innerText = "Action จากพนักงาน";
+        document.getElementById('action').placeholder = "ดำเนินการอย่างไร";
+        document.getElementById('lbl-status').innerText = "สถานะ *";
+        document.getElementById('btn-submit').innerText = "บันทึกข้อมูล";
+        document.getElementById('lbl-status-title').innerText = "สถานะ :";
+        document.getElementById('status-text').innerText = "พร้อมใช้งาน";
+      } else {
+        btnTh.className = "px-3 py-1 text-xs font-bold rounded-full bg-white text-vm-green border border-vm-green transition";
+        btnEn.className = "px-3 py-1 text-xs font-bold rounded-full bg-vm-green text-white transition";
+        
+        document.getElementById('lbl-title').innerText = "🟢 Customer Compliment";
+        document.getElementById('lbl-subtitle').innerText = "Villa Market Sukhumvit 33";
+        document.getElementById('lbl-recorder-title').innerText = "Recorded by:";
+        document.getElementById('lbl-detail').innerText = "Compliment Details *";
+        document.getElementById('detail').placeholder = "e.g., Customer praised helpful service";
+        document.getElementById('lbl-customer').innerText = "Customer Name / Contact";
+        document.getElementById('customer').placeholder = "Optional (e.g. John Doe 081-xxx-xxxx)";
+        document.getElementById('lbl-action').innerText = "Action Taken";
+        document.getElementById('action').placeholder = "Action details";
+        document.getElementById('lbl-status').innerText = "Status *";
+        document.getElementById('btn-submit').innerText = "Submit Data";
+        document.getElementById('lbl-status-title').innerText = "Status :";
+        document.getElementById('status-text').innerText = "Ready";
+      }
+    }
 
-        document.querySelectorAll('.i18n').forEach(el => {
-            const text = el.getAttribute(`data-${lang.toLowerCase()}`);
-            if (text) el.innerText = text;
+    // ส่งข้อมูลบันทึก
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const detail = document.getElementById("detail").value.trim();
+      if (!detail) {
+        Swal.fire({
+          icon: 'warning',
+          title: currentLang === 'TH' ? 'แจ้งเตือน' : 'Warning',
+          text: currentLang === 'TH' ? 'กรุณากรอกรายละเอียดคำชม' : 'Please enter compliment details',
+          confirmButtonText: currentLang === 'TH' ? 'ตกลง' : 'OK'
         });
-        document.querySelectorAll('.i18n-ph').forEach(input => {
-            const ph = input.getAttribute(`data-${lang.toLowerCase()}-ph`);
-            if (ph) input.placeholder = ph;
+        return;
+      }
+
+      const formData = {
+        action: "saveCustomer",
+        type: "คำชมลูกค้า",
+        detail: detail,
+        customer: document.getElementById("customer").value.trim(),
+        requestAction: document.getElementById("action").value.trim(),
+        status: document.getElementById("status").value,
+        lineUserId: userProfile ? userProfile.userId : "",
+        userName: userProfile ? userProfile.displayName : ""
+      };
+
+      Swal.fire({
+        title: currentLang === "EN" ? 'Saving...' : 'กำลังบันทึกข้อมูล...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(formData)
         });
-    }
 
-    async function initLINE() {
-        try {
-            await liff.init({ liffId: LIFF_ID });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            const profile = await liff.getProfile();
-            lineUser = { id: profile.userId, name: profile.displayName };
-            document.getElementById("userName").innerText = profile.displayName;
+        const result = await response.json();
 
-            const res = await fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`).then(r => r.json());
-            
-            if (res.registered) {
-                document.getElementById("form-content").style.display = "block";
-                if (res.lang) switchLanguage(res.lang);
-            } else {
-                document.getElementById("access-denied").style.display = "block";
-            }
-
-        } catch (e) {
-            document.getElementById("access-denied").style.display = "block";
+        if (result.success) {
+          Swal.fire({
+            icon: 'success',
+            title: currentLang === "EN" ? 'Success!' : 'บันทึกสำเร็จ!',
+            text: result.message || (currentLang === 'TH' ? 'บันทึกข้อมูลเรียบร้อยแล้ว' : 'Data saved successfully'),
+            timer: 2000,
+            showConfirmButton: false
+          }).then(() => {
+            liff.closeWindow();
+          });
+        } else {
+          Swal.fire({
+            icon: 'warning',
+            title: currentLang === "EN" ? 'Warning' : 'แจ้งเตือน',
+            text: result.message,
+            confirmButtonText: currentLang === "EN" ? 'OK' : 'ตกลง'
+          });
         }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.toString()
+        });
+        document.getElementById("status-text").innerText = "Error: " + err.message;
+      }
     }
-
-    async function saveData() {
-        const detail = document.getElementById("detail").value.trim();
-        if (detail === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
-            return;
-        }
-
-        const data = {
-            action: "saveCustomer",
-            type: "ติดตามสินค้า_2",
-            detail: detail,
-            customer: document.getElementById("customer").value,
-            requestAction: document.getElementById("requestAction").value,
-            status: document.getElementById("status").value,
-            userName: lineUser.name,
-            lineUserId: lineUser.id
-        };
-
-        try {
-            document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) liff.closeWindow();
-        } catch (err) {
-            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
-            document.getElementById("status-text").innerText = currentLang === 'TH' ? "เกิดข้อผิดพลาด" : "Error";
-        }
-    }
-
-    initLINE();
-</script>
+  </script>
 </body>
 </html>
