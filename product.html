@@ -1,141 +1,254 @@
 <!DOCTYPE html>
-<html lang="th">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ติดตามสินค้า - Villa Market S33</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
-        .container { max-width: 480px; margin: auto; }
-        .header { background: #005bbb; color: white; padding: 25px; border-radius: 18px; text-align: center; }
-        .header h1 { margin: 0; font-size: 26px; }
-        .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
-        label { font-weight: bold; display: block; margin-top: 15px; }
-        input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
-        textarea { height: 100px; }
-        button { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
-        .line-box { background: #eef5ff; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .status { font-size: 13px; color: #666; margin-top: 15px; }
-
-        .lang-btn-group { display: flex; gap: 5px; }
-        .lang-btn { background: #fff; border: 1px solid #005bbb; padding: 4px 10px; border-radius: 15px; font-size: 12px; cursor: pointer; font-weight: bold; color: #005bbb; }
-        .lang-btn.active { background: #005bbb; color: white; }
-    </style>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>บันทึกการติดตามสินค้า</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f4f7f6;
+      margin: 0;
+      padding: 15px;
+      color: #333;
+    }
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .user-info {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    h2 {
+      margin-top: 0;
+      color: #00b900;
+      font-size: 20px;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    .checkbox-group {
+      background: #f9f9f9;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #e2e2e2;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .checkbox-item:last-child {
+      margin-bottom: 0;
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    .btn-submit {
+      width: 100%;
+      background-color: #00b900;
+      color: white;
+      border: none;
+      padding: 12px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .btn-submit:disabled {
+      background-color: #ccc;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <div class="header">
-        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ติดตามสินค้า</h1>
-        <p>Villa Market สุขุมวิท 33</p>
-    </div>
 
-    <div class="card">
-        <div class="line-box">
-            <div><span class="i18n" data-th="ผู้รับเรื่อง:" data-en="Receiver:">ผู้รับเรื่อง:</span> <span id="userName">กำลังโหลด...</span></div>
-            <div class="lang-btn-group">
-                <button type="button" class="lang-btn active" id="btn-th" onclick="switchLanguage('TH')">TH</button>
-                <button type="button" class="lang-btn" id="btn-en" onclick="switchLanguage('EN')">EN</button>
-            </div>
+<div class="card">
+  <h2>📦 บันทึกข้อมูลติดตามสินค้า</h2>
+  
+  <!-- แสดงชื่อ User (ถอดปุ่มเปลี่ยนภาษาออกแล้ว) -->
+  <div class="user-info">
+    👤 ผู้ใช้งาน: <span id="userNameDisplay">กำลังโหลด...</span>
+  </div>
+
+  <form id="trackingForm">
+    <!-- Checkbox 2 ตัวเลือก -->
+    <div class="form-group">
+      <label id="lblCategory">ประเภทเรื่องที่ติดตาม (เลือกได้มากกว่า 1 ข้อ):</label>
+      <div class="checkbox-group">
+        <div class="checkbox-item">
+          <input type="checkbox" id="chkTracking" name="trackingOption" value="ติดตามสินค้า">
+          <label for="chkTracking" style="margin:0; font-weight:normal;">📦 ติดตามสินค้า</label>
         </div>
-
-        <label class="i18n" data-th="รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ" data-en="Product Details / Customer Request">รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ</label>
-        <textarea id="detail" class="i18n-ph" data-th-ph="เช่น ลูกค้าสอบถาม Dr Pepper ขนาด 355 ml" data-en-ph="e.g., Customer inquiry about Dr Pepper 355ml"></textarea>
-
-        <label class="i18n" data-th="ชื่อลูกค้า / เบอร์ติดต่อ" data-en="Customer Name / Contact">ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional">
-
-        <label class="i18n" data-th="การดำเนินการ / ผลการตรวจสอบ" data-en="Action / Follow-up Status">การดำเนินการ / ผลการตรวจสอบ</label>
-        <textarea id="requestAction" class="i18n-ph" data-th-ph="เช่น ตรวจสอบสาขาอื่น / ประสานจัดซื้อ" data-en-ph="e.g., Check other branches / Contact purchasing"></textarea>
-
-        <label class="i18n" data-th="สถานะ" data-en="Status">สถานะ</label>
-        <select id="status">
-            <option value="เสร็จสิ้น" class="i18n" data-th="เสร็จสิ้น" data-en="Completed">เสร็จสิ้น</option>
-            <option value="รอดำเนินการ" class="i18n" data-th="รอดำเนินการ" data-en="Pending">รอดำเนินการ</option>
-        </select>
-
-        <button onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
-        <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
+        <div class="checkbox-item">
+          <input type="checkbox" id="chkInquiry" name="trackingOption" value="ลูกค้าถามหาสินค้า">
+          <label for="chkInquiry" style="margin:0; font-weight:normal;">❓ ลูกค้าถามหาสินค้า</label>
+        </div>
+      </div>
     </div>
+
+    <div class="form-group">
+      <label id="lblDetail">รายละเอียดสินค้า / ปัญหา:</label>
+      <textarea id="detail" rows="3" placeholder="ระบุรายละเอียดสินค้า..." required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label id="lblCustomer">ชื่อลูกค้า / ช่องทางการติดต่อ:</label>
+      <input type="text" id="customer" placeholder="ระบุชื่อลูกค้า หรือเบอร์โทร..." required>
+    </div>
+
+    <div class="form-group">
+      <label id="lblAction">การดำเนินการต่อไป:</label>
+      <input type="text" id="requestAction" placeholder="เช่น ส่งเรื่องให้คลัง, แจ้งกลับลูกค้า...">
+    </div>
+
+    <div class="form-group">
+      <label id="lblStatus">สถานะงาน:</label>
+      <select id="status">
+        <option value="รอดำเนินการ">รอดำเนินการ</option>
+        <option value="กำลังดำเนินการ">กำลังดำเนินการ</option>
+        <option value="เสร็จสิ้น">เสร็จสิ้น</option>
+      </select>
+    </div>
+
+    <button type="button" class="btn-submit" id="btnSubmit" onclick="submitForm()">💾 บันทึกข้อมูล</button>
+  </form>
 </div>
 
 <script>
-    const LIFF_ID = "2011171771-2kU5r1Xp";
-    const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
-    let lineUser = {};
-    let currentLang = 'TH';
+  let userLineId = "";
+  let userDisplayName = "";
 
-    function switchLanguage(lang) {
-        currentLang = lang;
-        document.getElementById('btn-th').classList.toggle('active', lang === 'TH');
-        document.getElementById('btn-en').classList.toggle('active', lang === 'EN');
-
-        document.querySelectorAll('.i18n').forEach(el => {
-            const text = el.getAttribute(`data-${lang.toLowerCase()}`);
-            if (text) el.innerText = text;
+  // 1. Initial LIFF
+  window.onload = function () {
+    // เปลี่ยน YOUR_LIFF_ID เป็น LIFF ID ของคุณ
+    liff.init({ liffId: "2011171771-2kU5r1Xp" }).then(() => {
+      if (liff.isLoggedIn()) {
+        liff.getProfile().then(profile => {
+          userLineId = profile.userId;
+          userDisplayName = profile.displayName;
+          document.getElementById("userNameDisplay").innerText = userDisplayName;
+          
+          checkUserAuthAndLang(userLineId);
         });
-        document.querySelectorAll('.i18n-ph').forEach(input => {
-            const ph = input.getAttribute(`data-${lang.toLowerCase()}-ph`);
-            if (ph) input.placeholder = ph;
-        });
+      } else {
+        liff.login();
+      }
+    }).catch(err => {
+      console.error("LIFF Init Error: ", err);
+      // กรณีทดสอบใน Web Browser
+      document.getElementById("userNameDisplay").innerText = "Test User";
+    });
+  };
+
+  // 2. ตรวจสอบสิทธิ์และสลับภาษาจาก คอลัมน์ L อัตโนมัติ
+  function checkUserAuthAndLang(lineUserId) {
+    google.script.run.withSuccessHandler(function(response) {
+      const data = JSON.parse(response);
+      if (!data.registered) {
+        alert("⚠️ คุณไม่มีสิทธิ์ใช้งานระบบ กรุณาติดต่อผู้ดูแลระบบ");
+        liff.closeWindow();
+        return;
+      }
+      
+      // สลับภาษา UI ในหน้าเว็บตามคอลัมน์ L
+      if (data.lang === "EN") {
+        applyEnglishUI();
+      }
+    }).doGet({ action: "getUserLang", lineUserId: lineUserId });
+  }
+
+  // 3. ฟังก์ชันปรับ Label สำหรับภาษาอังกฤษ (หากคอลัมน์ L เป็น EN)
+  function applyEnglishUI() {
+    document.getElementById("lblCategory").innerText = "Tracking Category (Select all that apply):";
+    document.getElementById("lblDetail").innerText = "Product Detail / Issue:";
+    document.getElementById("lblCustomer").innerText = "Customer Name / Contact:";
+    document.getElementById("lblAction").innerText = "Action Required:";
+    document.getElementById("lblStatus").innerText = "Status:";
+    document.getElementById("btnSubmit").innerText = "💾 Save Data";
+  }
+
+  // 4. บันทึกข้อมูล
+  function submitForm() {
+    const detail = document.getElementById("detail").value.trim();
+    const customer = document.getElementById("customer").value.trim();
+    const requestAction = document.getElementById("requestAction").value.trim();
+    const status = document.getElementById("status").value;
+
+    // รวบรวมค่าจาก Checkbox
+    let selectedSubTypes = [];
+    document.querySelectorAll('input[name="trackingOption"]:checked').forEach((chk) => {
+      selectedSubTypes.push(chk.value);
+    });
+
+    if (selectedSubTypes.length === 0) {
+      alert("⚠️ กรุณาเลือกประเภทเรื่องที่ติดตามอย่างน้อย 1 ข้อ");
+      return;
     }
 
-    async function initLINE() {
-        try {
-            await liff.init({ liffId: LIFF_ID });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            const profile = await liff.getProfile();
-            lineUser = { id: profile.userId, name: profile.displayName };
-            document.getElementById("userName").innerText = profile.displayName;
-
-            fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
-                .then(res => res.json())
-                .then(res => { if (res.lang) switchLanguage(res.lang); })
-                .catch(err => console.log(err));
-
-        } catch (e) {
-            document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
-        }
+    if (!detail || !customer) {
+      alert("⚠️ กรุณากรอกรายละเอียดและชื่อลูกค้าให้ครบถ้วน");
+      return;
     }
 
-    async function saveData() {
-        const detail = document.getElementById("detail").value.trim();
-        if (detail === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
-            return;
-        }
+    const btn = document.getElementById("btnSubmit");
+    btn.disabled = true;
+    btn.innerText = "⏳ กำลังบันทึก...";
 
-        const data = {
-            action: "saveCustomer",
-            type: "ติดตามสินค้า_2",
-            detail: detail,
-            customer: document.getElementById("customer").value,
-            requestAction: document.getElementById("requestAction").value,
-            status: document.getElementById("status").value,
-            userName: lineUser.name,
-            lineUserId: lineUser.id
-        };
+    const payload = {
+      action: "saveCustomer",
+      type: "ติดตามสินค้า_2",
+      subTypes: selectedSubTypes,
+      detail: detail,
+      customer: customer,
+      requestAction: requestAction,
+      status: status,
+      lineUserId: userLineId,
+      userName: userDisplayName
+    };
 
-        try {
-            document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) liff.closeWindow();
-        } catch (err) {
-            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
-        }
-    }
+    google.script.run.withSuccessHandler(function(response) {
+      btn.disabled = false;
+      btn.innerText = "💾 บันทึกข้อมูล";
 
-    initLINE();
+      const res = JSON.parse(response);
+      if (res.success) {
+        alert("✅ " + res.message);
+        liff.closeWindow(); // บันทึกสำเร็จ ปิดหน้าต่าง LIFF
+      } else {
+        alert(res.message); // หากซ้ำ จะแจ้งเตือน และไม่ปิดหน้าต่างเพื่อให้แก้ไข
+      }
+    }).doPost(payload);
+  }
 </script>
+
 </body>
 </html>
