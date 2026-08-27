@@ -13,20 +13,9 @@
         .header h1 { margin: 0; font-size: 26px; }
         .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
         label { font-weight: bold; display: block; margin-top: 15px; }
-        
-        /* จัดสไตล์ Input, Textarea, Select ให้มาตรฐานเดียวกันทั้งหมด */
-        input[type="text"], textarea, select { 
-            width: 100%; 
-            padding: 12px; 
-            font-size: 16px; 
-            border-radius: 10px; 
-            border: 1px solid #ccc; 
-            margin-top: 8px; 
-            font-family: inherit;
-        }
-        textarea { height: 80px; resize: vertical; }
-        
-        button.btn-main { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
+        textarea { height: 100px; }
+        button { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .line-box { background: #eef5ff; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
         .status { font-size: 13px; color: #666; margin-top: 15px; }
         .lang-btn-group { display: flex; gap: 5px; }
@@ -34,12 +23,6 @@
         .lang-btn.active { background: #005bbb; color: white; }
         #access-denied { display: none; text-align: center; padding: 30px 15px; }
         .reg-btn { background: #d71920; color: white; border: none; padding: 12px 20px; border-radius: 10px; display: inline-block; margin-top: 15px; font-weight: bold; cursor: pointer; }
-        
-        /* สไตล์สำหรับ Checkbox */
-        .checkbox-group { background: #f9f9f9; padding: 12px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
-        .checkbox-item { display: flex; align-items: center; margin-bottom: 8px; font-weight: normal; cursor: pointer; margin-top: 0; }
-        .checkbox-item:last-child { margin-bottom: 0; }
-        .checkbox-item input[type="checkbox"] { width: 20px; height: 20px; margin-right: 10px; margin-top: 0; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -64,39 +47,22 @@
             </div>
         </div>
 
-        <!-- 1. ส่วน Checkbox ตัวเลือก -->
-        <label class="i18n" data-th="ประเภทเรื่องที่ติดตาม (เลือกได้มากกว่า 1 ข้อ)" data-en="Tracking Category (Select all that apply)">ประเภทเรื่องที่ติดตาม (เลือกได้มากกว่า 1 ข้อ)</label>
-        <div class="checkbox-group">
-            <label class="checkbox-item">
-                <input type="checkbox" name="subTypes" value="ติดตามสินค้า">
-                <span class="i18n" data-th="📦 ติดตามสินค้า" data-en="📦 Product Tracking">📦 ติดตามสินค้า</span>
-            </label>
-            <label class="checkbox-item">
-                <input type="checkbox" name="subTypes" value="ลูกค้าถามหาสินค้า">
-                <span class="i18n" data-th="❓ ลูกค้าถามหาสินค้า" data-en="❓ Customer Inquiry">❓ ลูกค้าถามหาสินค้า</span>
-            </label>
-        </div>
-
-        <!-- 2. รายละเอียดสินค้า -->
         <label class="i18n" data-th="รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ" data-en="Product Details / Customer Request">รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ</label>
         <textarea id="detail" class="i18n-ph" data-th-ph="เช่น ลูกค้าสอบถาม Dr Pepper ขนาด 355 ml" data-en-ph="e.g., Customer inquiry about Dr Pepper 355ml"></textarea>
 
-        <!-- 3. ชื่อลูกค้า / เบอร์ติดต่อ (ปรับรูปทรงให้เหมือนกัน) -->
         <label class="i18n" data-th="ชื่อลูกค้า / เบอร์ติดต่อ" data-en="Customer Name / Contact">ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <textarea id="customer" class="i18n-ph" style="height: 60px;" data-th-ph="ถ้ามี (เช่น คุณสมชาย 081-xxx-xxxx)" data-en-ph="Optional (e.g. Mr. John 081-xxx-xxxx)"></textarea>
+        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional">
 
-        <!-- 4. การดำเนินการ -->
         <label class="i18n" data-th="การดำเนินการ / ผลการตรวจสอบ" data-en="Action / Follow-up Status">การดำเนินการ / ผลการตรวจสอบ</label>
         <textarea id="requestAction" class="i18n-ph" data-th-ph="เช่น ตรวจสอบสาขาอื่น / ประสานจัดซื้อ" data-en-ph="e.g., Check other branches / Contact purchasing"></textarea>
 
-        <!-- 5. สถานะ -->
         <label class="i18n" data-th="สถานะ" data-en="Status">สถานะ</label>
         <select id="status">
             <option value="เสร็จสิ้น" class="i18n" data-th="เสร็จสิ้น" data-en="Completed">เสร็จสิ้น</option>
             <option value="รอดำเนินการ" class="i18n" data-th="รอดำเนินการ" data-en="Pending">รอดำเนินการ</option>
         </select>
 
-        <button onclick="saveData()" class="btn-main i18n" id="btnSubmit" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
+        <button onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
         <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
     </div>
 </div>
@@ -148,17 +114,6 @@
     }
 
     async function saveData() {
-        // ดึงค่าจาก Checkbox
-        const selectedSubTypes = [];
-        document.querySelectorAll('input[name="subTypes"]:checked').forEach(chk => {
-            selectedSubTypes.push(chk.value);
-        });
-
-        if (selectedSubTypes.length === 0) {
-            alert(currentLang === 'TH' ? "กรุณาเลือกประเภทเรื่องที่ติดตามอย่างน้อย 1 ข้อ" : "Please select at least one tracking category.");
-            return;
-        }
-
         const detail = document.getElementById("detail").value.trim();
         if (detail === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
@@ -168,47 +123,26 @@
         const data = {
             action: "saveCustomer",
             type: "ติดตามสินค้า_2",
-            subTypes: selectedSubTypes,
             detail: detail,
-            customer: document.getElementById("customer").value.trim(),
-            requestAction: document.getElementById("requestAction").value.trim(),
+            customer: document.getElementById("customer").value,
+            requestAction: document.getElementById("requestAction").value,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
         };
 
-        const btnSubmit = document.getElementById("btnSubmit");
-
         try {
-            btnSubmit.disabled = true;
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
-            
             const response = await fetch(API_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain;charset=utf-8" },
+                headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            
-            const textResult = await response.text();
-            let result;
-            try {
-                result = JSON.parse(textResult);
-            } catch (e) {
-                result = { success: true };
-            }
-            
-            if (result.success) {
-                alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-                liff.closeWindow();
-            } else {
-                alert(result.message || (currentLang === 'TH' ? "พบข้อมูลซ้ำกับ 5 รายการล่าสุด" : "Duplicate data detected"));
-                document.getElementById("status-text").innerText = currentLang === 'TH' ? "พบข้อมูลซ้ำ" : "Duplicate Data";
-                btnSubmit.disabled = false;
-            }
+            const result = await response.json();
+            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
+            if (result.success) liff.closeWindow();
         } catch (err) {
-            console.error("Fetch Error: ", err);
-            btnSubmit.disabled = false;
-            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์" : "Error connecting to server");
+            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "เกิดข้อผิดพลาด" : "Error";
         }
     }
