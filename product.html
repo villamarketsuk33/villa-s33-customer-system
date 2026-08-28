@@ -23,6 +23,11 @@
         .lang-btn.active { background: #005bbb; color: white; }
         #access-denied { display: none; text-align: center; padding: 30px 15px; }
         .reg-btn { background: #d71920; color: white; border: none; padding: 12px 20px; border-radius: 10px; display: inline-block; margin-top: 15px; font-weight: bold; cursor: pointer; }
+
+        .checkbox-group { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .checkbox-item { display: flex; align-items: center; background: #f7f9fc; border: 1px solid #ddd; border-radius: 10px; padding: 12px; cursor: pointer; }
+        .checkbox-item input[type="checkbox"] { width: auto; margin: 0 10px 0 0; padding: 0; accent-color: #005bbb; transform: scale(1.2); }
+        .checkbox-item span { font-weight: normal; }
     </style>
 </head>
 <body>
@@ -45,6 +50,18 @@
                 <button type="button" class="lang-btn active" id="btn-th" onclick="switchLanguage('TH')">TH</button>
                 <button type="button" class="lang-btn" id="btn-en" onclick="switchLanguage('EN')">EN</button>
             </div>
+        </div>
+
+        <label class="i18n" data-th="ประเภทเรื่อง" data-en="Request Type">ประเภทเรื่อง</label>
+        <div class="checkbox-group">
+            <label class="checkbox-item">
+                <input type="checkbox" id="cbAsk" value="ลูกค้าถามหาสินค้า">
+                <span class="i18n" data-th="ลูกค้าถามหาสินค้า" data-en="Customer asking for a product">ลูกค้าถามหาสินค้า</span>
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="cbFollow" value="ติดตามสินค้าให้ลูกค้า">
+                <span class="i18n" data-th="ติดตามสินค้าให้ลูกค้า" data-en="Following up on a product for customer">ติดตามสินค้าให้ลูกค้า</span>
+            </label>
         </div>
 
         <label class="i18n" data-th="รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ" data-en="Product Details / Customer Request">รายละเอียดสินค้า / สิ่งที่ลูกค้าต้องการ</label>
@@ -120,9 +137,14 @@
             return;
         }
 
+        const requestTypes = [];
+        if (document.getElementById("cbAsk").checked) requestTypes.push(document.getElementById("cbAsk").value);
+        if (document.getElementById("cbFollow").checked) requestTypes.push(document.getElementById("cbFollow").value);
+
         const data = {
             action: "saveCustomer",
             type: "ติดตามสินค้า_2",
+            requestType: requestTypes.join(", "),
             detail: detail,
             customer: document.getElementById("customer").value,
             requestAction: document.getElementById("requestAction").value,
