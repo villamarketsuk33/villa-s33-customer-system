@@ -1,0 +1,601 @@
+﻿<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CS Dashboard - Villa Market S33</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Kanit', sans-serif; }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    /* Touch target optimization for mobile */
+    input[type="date"] { -webkit-appearance: none; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-10 font-sans antialiased selection:bg-red-500 selection:text-white">
+
+  <!-- Navigation / Header (Villa Market Navy & Red Branding) -->
+  <header class="bg-[#0B1E36] text-white shadow-lg sticky top-0 z-40 border-b-4 border-red-600">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+      
+      <!-- Brand & Logo -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-2.5">
+          <!-- Villa Market Emblem SVG -->
+          <div class="w-10 h-10 sm:w-11 sm:h-11 bg-red-600 rounded-xl flex items-center justify-center shadow-md border-2 border-white/20 shrink-0">
+            <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"/>
+              <circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+              <path d="M12 9l2 2 4-4" stroke="#ffffff" stroke-width="2.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-lg sm:text-xl font-black tracking-wider text-white uppercase font-sans">VILLA <span class="text-red-500">MARKET</span></span>
+              <span id="data-source-badge" class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-full shadow-sm">Live API</span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-blue-200 font-normal">ระบบรายงาน CS • สาขาสุขุมวิท 33 (S33)</p>
+          </div>
+        </div>
+
+        <!-- Mobile Controls Toggle Helper -->
+        <div class="flex md:hidden items-center gap-1.5">
+          <button onclick="loadData()" class="p-2 bg-blue-900/80 hover:bg-blue-800 text-white rounded-lg text-xs transition border border-blue-700/60 active:scale-95 flex items-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon-mobile"></i>
+            <span class="text-[11px]">รีเฟรช</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Top Action Controls -->
+      <div class="hidden md:flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end">
+        <button onclick="loadData()" class="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-md active:scale-95">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i>
+          <span>รีเฟรชข้อมูล</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+
+    <!-- Filter Control Card -->
+    <div class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-slate-200">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+        
+        <div class="flex items-center gap-2 font-semibold text-blue-950 text-xs sm:text-sm">
+          <div class="p-1.5 bg-blue-50 text-blue-900 rounded-lg border border-blue-100">
+            <i data-lucide="calendar" class="w-4 h-4"></i>
+          </div>
+          <span>ช่วงเวลาข้อมูล:</span>
+        </div>
+        
+        <!-- Filter Preset Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 w-full lg:w-auto">
+          <button onclick="setPresetFilter('today')" id="btn-today" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">วันนี้</button>
+          <button onclick="setPresetFilter('7days')" id="btn-7days" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">7 วันล่าสุด</button>
+          <button onclick="setPresetFilter('month')" id="btn-month" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">เดือนนี้</button>
+          <button onclick="setPresetFilter('all')" id="btn-all" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95 active">ทั้งหมด</button>
+        </div>
+
+        <!-- Custom Date Range inputs -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-100 text-xs text-slate-600">
+          <span class="text-slate-400 whitespace-nowrap text-[11px] sm:text-xs">เลือกกำหนดเอง:</span>
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <input type="date" id="startDate" class="w-full sm:w-auto px-2.5 py-1.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none text-slate-700 text-xs" onchange="applyCustomFilter()">
+            <span class="text-slate-400">ถึง</span>
+            <input type="date" id="endDate" class="w-full sm:w-auto px-2.5 py-1.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-900 outline-none text-slate-700 text-xs" onchange="applyCustomFilter()">
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KPI Summary Stat Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
+      
+      <!-- Total Records -->
+      <div class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-2 h-full bg-blue-900"></div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-slate-500">บันทึกทั้งหมด</span>
+          <div class="p-1.5 sm:p-2 bg-blue-50 text-blue-900 rounded-xl">
+            <i data-lucide="file-text" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          </div>
+        </div>
+        <p class="text-xl sm:text-3xl font-bold text-slate-900" id="stat-total">0</p>
+        <p class="text-[10px] sm:text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+          <i data-lucide="layers" class="w-3 h-3 text-blue-800"></i> รวม 3 หมวดหมู่
+        </p>
+      </div>
+
+      <!-- Compliment -->
+      <div class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-emerald-100 hover:shadow-md transition relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-2 h-full bg-emerald-500"></div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-slate-500">คำชมลูกค้า</span>
+          <div class="p-1.5 sm:p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+            <i data-lucide="smile" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          </div>
+        </div>
+        <p class="text-xl sm:text-3xl font-bold text-emerald-600" id="stat-compliment">0</p>
+        <p class="text-[10px] sm:text-[11px] text-emerald-600/90 mt-1 truncate" id="stat-compliment-pct">
+          0% ของรายการทั้งหมด
+        </p>
+      </div>
+
+      <!-- Complain -->
+      <div class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-red-100 hover:shadow-md transition relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-2 h-full bg-red-600"></div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-slate-500">คอมเพลนลูกค้า</span>
+          <div class="p-1.5 sm:p-2 bg-red-50 text-red-600 rounded-xl">
+            <i data-lucide="frown" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          </div>
+        </div>
+        <p class="text-xl sm:text-3xl font-bold text-red-600" id="stat-complain">0</p>
+        <p class="text-[10px] sm:text-[11px] text-red-600/90 mt-1 truncate" id="stat-complain-pct">
+          0% ของรายการทั้งหมด
+        </p>
+      </div>
+
+      <!-- Tracking -->
+      <div class="bg-white p-3.5 sm:p-5 rounded-2xl shadow-sm border border-amber-100 hover:shadow-md transition relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-2 h-full bg-amber-500"></div>
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] sm:text-xs font-semibold text-slate-500">ติดตามสินค้า</span>
+          <div class="p-1.5 sm:p-2 bg-amber-50 text-amber-600 rounded-xl">
+            <i data-lucide="package-search" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+          </div>
+        </div>
+        <p class="text-xl sm:text-3xl font-bold text-amber-600" id="stat-tracking">0</p>
+        <p class="text-[10px] sm:text-[11px] text-amber-600/90 mt-1 truncate" id="stat-tracking-pct">
+          0% ของรายการทั้งหมด
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid md:grid-cols-2 gap-4 sm:gap-6">
+      
+      <!-- Chart 1: สัดส่วนเรื่องที่บันทึก -->
+      <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm sm:text-base">
+              <i data-lucide="pie-chart" class="w-4 h-4 text-red-600"></i> สัดส่วนประเภทเรื่องที่บันทึก
+            </h3>
+            <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">แบ่งตามประเภท คำชม / คอมเพลน / ติดตามสินค้า</p>
+          </div>
+        </div>
+        <div class="relative w-full h-56 sm:h-64 flex items-center justify-center p-1">
+          <canvas id="typeChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: สัดส่วนสถานะการดำเนินงาน -->
+      <div class="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm sm:text-base">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-blue-900"></i> สัดส่วนสถานะการดำเนินงาน
+            </h3>
+            <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">แสดงสถานะระดับการจัดการเคสในระบบ</p>
+          </div>
+        </div>
+        <div class="relative w-full h-56 sm:h-64 flex items-center justify-center p-1">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Employee Performance Leaderboard Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-slate-50/70">
+        <div>
+          <h3 class="font-bold text-slate-800 flex items-center gap-2 text-sm sm:text-base">
+            <i data-lucide="users" class="w-4 h-4 sm:w-5 sm:h-5 text-blue-900"></i> ผลงานการบันทึกแยกตามพนักงาน
+          </h3>
+          <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">จำนวนเรื่องทั้งหมดที่พนักงานบันทึกในช่วงเวลาที่เลือก</p>
+        </div>
+        
+        <div class="flex items-center gap-2 sm:gap-3">
+          <div class="relative w-full sm:w-48">
+            <input type="text" id="empSearch" onkeyup="filterEmployeeTable()" placeholder="ค้นหาพนักงาน..." class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-900">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-900 border border-blue-100 rounded-lg whitespace-nowrap" id="emp-count-label">
+            0 คน
+          </span>
+        </div>
+      </div>
+
+      <!-- Mobile Scrollable Table Container -->
+      <div class="overflow-x-auto custom-scrollbar">
+        <table class="w-full text-left text-xs sm:text-sm text-slate-600 min-w-[600px]">
+          <thead class="bg-blue-950 text-white text-[11px] font-semibold uppercase tracking-wider">
+            <tr>
+              <th class="px-3 sm:px-5 py-3 text-center w-14">อันดับ</th>
+              <th class="px-4 sm:px-6 py-3">ชื่อ-นามสกุล พนักงาน</th>
+              <th class="px-3 sm:px-5 py-3 text-center">🟢 คำชม</th>
+              <th class="px-3 sm:px-5 py-3 text-center">🔴 คอมเพลน</th>
+              <th class="px-3 sm:px-5 py-3 text-center">🟡 ติดตาม</th>
+              <th class="px-4 sm:px-6 py-3 text-center font-bold bg-blue-900 text-white">รวม (เรื่อง)</th>
+              <th class="px-3 sm:px-5 py-3 text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="empTableBody" class="divide-y divide-slate-100 text-xs">
+            <!-- Data rows dynamically rendered -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Record Details Modal -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+    <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh]">
+      <div class="p-4 sm:p-5 bg-[#0B1E36] text-white flex justify-between items-center border-b-2 border-red-600">
+        <div class="flex items-center gap-2">
+          <i data-lucide="list-filter" class="w-5 h-5 text-red-500"></i>
+          <h3 class="font-bold text-sm sm:text-base" id="modalTitle">ประวัติการบันทึกข้อมูล</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-300 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-4 sm:p-5 overflow-y-auto custom-scrollbar space-y-2.5" id="modalContent">
+        <!-- Details dynamically populated -->
+      </div>
+
+      <div class="p-3.5 border-t border-slate-100 bg-slate-50 text-right">
+        <button onclick="closeModal()" class="w-full sm:w-auto px-5 py-2 bg-blue-900 hover:bg-blue-950 text-white text-xs font-semibold rounded-xl transition">
+          ปิดหน้าต่าง
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration & Live Apps Script Endpoint
+    const LIVE_API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
+    
+    let rawData = [];
+    let activeFilteredData = [];
+    let typeChartInstance = null;
+    let statusChartInstance = null;
+
+    window.onload = function() {
+      lucide.createIcons();
+      loadData();
+    };
+
+    function loadData() {
+      const refreshIcon = document.getElementById('refresh-icon');
+      const refreshIconMobile = document.getElementById('refresh-icon-mobile');
+      
+      if (refreshIcon) refreshIcon.classList.add('animate-spin');
+      if (refreshIconMobile) refreshIconMobile.classList.add('animate-spin');
+
+      fetch(`${LIVE_API_URL}?action=getDashboardData`)
+        .then(res => res.json())
+        .then(res => {
+          if (res.success && Array.isArray(res.data)) {
+            rawData = res.data;
+          } else {
+            console.warn("API response empty or invalid", res);
+            rawData = [];
+          }
+          setPresetFilter('all');
+        })
+        .catch(err => {
+          console.error("Fetch API Error:", err);
+          rawData = [];
+          setPresetFilter('all');
+        })
+        .finally(() => {
+          if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+          if (refreshIconMobile) refreshIconMobile.classList.remove('animate-spin');
+        });
+    }
+
+    function setPresetFilter(type) {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-blue-900', 'text-white', 'shadow-sm', 'border-blue-900');
+        b.classList.add('border', 'border-slate-200', 'text-slate-600', 'hover:bg-slate-50');
+      });
+
+      const activeBtn = document.getElementById(`btn-${type}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-blue-900', 'text-white', 'shadow-sm', 'border-blue-900');
+        activeBtn.classList.remove('border-slate-200', 'text-slate-600', 'hover:bg-slate-50');
+      }
+
+      const today = new Date();
+      let start = null;
+      let end = new Date();
+      end.setHours(23, 59, 59, 999);
+
+      if (type === 'today') {
+        start = new Date();
+        start.setHours(0,0,0,0);
+      } else if (type === '7days') {
+        start = new Date();
+        start.setDate(today.getDate() - 7);
+        start.setHours(0,0,0,0);
+      } else if (type === 'month') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        start.setHours(0,0,0,0);
+      }
+
+      if (start) {
+        document.getElementById('startDate').value = start.toISOString().split('T')[0];
+        document.getElementById('endDate').value = end.toISOString().split('T')[0];
+      } else {
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+      }
+
+      filterAndRenderData(start, end);
+    }
+
+    function applyCustomFilter() {
+      const sVal = document.getElementById('startDate').value;
+      const eVal = document.getElementById('endDate').value;
+
+      const start = sVal ? new Date(sVal) : null;
+      let end = eVal ? new Date(eVal) : null;
+      if (end) end.setHours(23, 59, 59, 999);
+
+      filterAndRenderData(start, end);
+    }
+
+    function filterAndRenderData(start, end) {
+      activeFilteredData = rawData.filter(item => {
+        if (!start && !end) return true;
+        const itemDate = new Date(item.timestamp);
+        if (start && itemDate < start) return false;
+        if (end && itemDate > end) return false;
+        return true;
+      });
+
+      renderOverview(activeFilteredData);
+      renderCharts(activeFilteredData);
+      renderEmployeeTable(activeFilteredData);
+    }
+
+    function renderOverview(data) {
+      let compliment = 0, complain = 0, tracking = 0;
+      data.forEach(d => {
+        if (d.type === "คำชมลูกค้า") compliment++;
+        else if (d.type === "คอมเพลนลูกค้า") complain++;
+        else tracking++;
+      });
+
+      const total = data.length;
+      document.getElementById('stat-total').innerText = total.toLocaleString();
+      document.getElementById('stat-compliment').innerText = compliment.toLocaleString();
+      document.getElementById('stat-complain').innerText = complain.toLocaleString();
+      document.getElementById('stat-tracking').innerText = tracking.toLocaleString();
+
+      const getPct = val => total > 0 ? Math.round((val / total) * 100) : 0;
+      document.getElementById('stat-compliment-pct').innerText = `${getPct(compliment)}% ของทั้งหมด`;
+      document.getElementById('stat-complain-pct').innerText = `${getPct(complain)}% ของทั้งหมด`;
+      document.getElementById('stat-tracking-pct').innerText = `${getPct(tracking)}% ของทั้งหมด`;
+    }
+
+    function renderCharts(data) {
+      // 1. Chart สัดส่วนประเภทเรื่อง (Villa Brand Colors: Green, Red, Amber)
+      let typeCounts = { "คำชมลูกค้า": 0, "คอมเพลนลูกค้า": 0, "ติดตามสินค้า": 0 };
+      data.forEach(d => {
+        if (typeCounts[d.type] !== undefined) typeCounts[d.type]++;
+        else typeCounts["ติดตามสินค้า"]++;
+      });
+
+      if (typeChartInstance) typeChartInstance.destroy();
+      const ctx1 = document.getElementById('typeChart').getContext('2d');
+      typeChartInstance = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: ['คำชมลูกค้า', 'คอมเพลนลูกค้า', 'ติดตามสินค้า'],
+          datasets: [{
+            data: [typeCounts["คำชมลูกค้า"], typeCounts["คอมเพลนลูกค้า"], typeCounts["ติดตามสินค้า"]],
+            backgroundColor: ['#10b981', '#dc2626', '#f59e0b'],
+            hoverOffset: 6,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 11 }, padding: 12 } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw || 0;
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                  return ` ${ctx.label}: ${val} เรื่อง (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // 2. Chart สัดส่วนสถานะการดำเนินงาน (Navy, Blue, Red, Amber, Purple)
+      let statusCounts = {};
+      data.forEach(d => {
+        let st = d.status || "ไม่ระบุสถานะ";
+        statusCounts[st] = (statusCounts[st] || 0) + 1;
+      });
+
+      if (statusChartInstance) statusChartInstance.destroy();
+      const ctx2 = document.getElementById('statusChart').getContext('2d');
+      statusChartInstance = new Chart(ctx2, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(statusCounts),
+          datasets: [{
+            data: Object.values(statusCounts),
+            backgroundColor: ['#0B1E36', '#2563eb', '#dc2626', '#f59e0b', '#64748b'],
+            hoverOffset: 6,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Kanit', size: 11 }, padding: 12 } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  const val = ctx.raw || 0;
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                  const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                  return ` ${ctx.label}: ${val} เรื่อง (${pct}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderEmployeeTable(data) {
+      let empMap = {};
+
+      data.forEach(d => {
+        let name = d.userName || "ไม่ระบุชื่อ";
+        if (!empMap[name]) {
+          empMap[name] = { compliment: 0, complain: 0, tracking: 0, total: 0 };
+        }
+        if (d.type === "คำชมลูกค้า") empMap[name].compliment++;
+        else if (d.type === "คอมเพลนลูกค้า") empMap[name].complain++;
+        else empMap[name].tracking++;
+        
+        empMap[name].total++;
+      });
+
+      const sortedEmp = Object.keys(empMap)
+        .map(name => ({ name, ...empMap[name] }))
+        .sort((a, b) => b.total - a.total);
+
+      document.getElementById('emp-count-label').innerText = `พนักงาน ${sortedEmp.length} คน`;
+
+      const tbody = document.getElementById('empTableBody');
+      tbody.innerHTML = '';
+
+      if (sortedEmp.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">ไม่พบข้อมูลพนักงานในช่วงเวลาที่เลือก</td></tr>`;
+        return;
+      }
+
+      sortedEmp.forEach((emp, index) => {
+        let rankBadge = `<span class="font-bold text-slate-400 text-xs">${index + 1}</span>`;
+        if (index === 0) rankBadge = `<span class="inline-flex items-center justify-center w-6 h-6 bg-amber-100 text-amber-700 font-bold rounded-full text-xs border border-amber-300">🥇</span>`;
+        else if (index === 1) rankBadge = `<span class="inline-flex items-center justify-center w-6 h-6 bg-slate-200 text-slate-700 font-bold rounded-full text-xs">🥈</span>`;
+        else if (index === 2) rankBadge = `<span class="inline-flex items-center justify-center w-6 h-6 bg-amber-800/10 text-amber-800 font-bold rounded-full text-xs">🥉</span>`;
+
+        tbody.innerHTML += `
+          <tr class="emp-row hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="px-3 sm:px-5 py-3 text-center">${rankBadge}</td>
+            <td class="px-4 sm:px-6 py-3 font-semibold text-slate-800 flex items-center gap-2">
+              <div class="w-7 h-7 rounded-full bg-blue-900 text-white flex items-center justify-center text-xs font-bold border border-blue-700">
+                ${emp.name.charAt(0)}
+              </div>
+              <span class="truncate max-w-[140px] sm:max-w-none">${emp.name}</span>
+            </td>
+            <td class="px-3 sm:px-5 py-3 text-center text-emerald-600 font-bold">${emp.compliment}</td>
+            <td class="px-3 sm:px-5 py-3 text-center text-red-600 font-bold">${emp.complain}</td>
+            <td class="px-3 sm:px-5 py-3 text-center text-amber-600 font-bold">${emp.tracking}</td>
+            <td class="px-4 sm:px-6 py-3 text-center font-extrabold text-blue-950 bg-blue-50/70">${emp.total}</td>
+            <td class="px-3 sm:px-5 py-3 text-center">
+              <button onclick="viewEmpDetails('${emp.name}')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-medium transition border border-red-200 active:scale-95">
+                ดูประวัติ
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterEmployeeTable() {
+      const q = document.getElementById('empSearch').value.toLowerCase();
+      const rows = document.querySelectorAll('.emp-row');
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    function viewEmpDetails(empName) {
+      const modal = document.getElementById('detailModal');
+      const title = document.getElementById('modalTitle');
+      const content = document.getElementById('modalContent');
+
+      title.innerText = `ประวัติการบันทึก: ${empName}`;
+      content.innerHTML = '';
+
+      const empRecords = activeFilteredData.filter(d => (d.userName || "ไม่ระบุชื่อ") === empName);
+
+      if (empRecords.length === 0) {
+        content.innerHTML = `<p class="text-center py-6 text-slate-400">ไม่พบบันทึกข้อมูลสำหรับพนักงานคนนี้</p>`;
+      } else {
+        empRecords.forEach((item, idx) => {
+          let badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-200";
+          if (item.type === "คอมเพลนลูกค้า") badgeColor = "bg-red-100 text-red-800 border-red-200";
+          else if (item.type === "ติดตามสินค้า") badgeColor = "bg-amber-100 text-amber-800 border-amber-200";
+
+          const formattedDate = new Date(item.timestamp).toLocaleString('th-TH', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+          });
+
+          content.innerHTML += `
+            <div class="p-3 sm:p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeColor}">${item.type}</span>
+                <span class="text-slate-400 text-[11px]">${formattedDate}</span>
+              </div>
+              <p class="font-medium text-slate-800 text-xs sm:text-sm mt-1 leading-relaxed">${item.detail || 'ไม่มีรายละเอียด'}</p>
+              <div class="flex justify-between items-center text-slate-500 pt-1 border-t border-slate-200/60 text-[11px]">
+                <span>ลูกค้า: <strong class="text-slate-700">${item.customer || '-'}</strong></span>
+                <span class="font-semibold text-blue-900">สถานะ: ${item.status || '-'}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
