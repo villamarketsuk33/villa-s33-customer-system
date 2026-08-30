@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ติดตามสินค้า - Villa Market S33</title>
+    <title>ลูกค้าถามหาสินค้า - Villa Market S33</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -33,7 +33,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ติดตามสินค้า</h1>
+        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ลูกค้าถามหาสินค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
@@ -79,7 +79,7 @@
             <option value="รอดำเนินการ" class="i18n" data-th="รอดำเนินการ" data-en="Pending">รอดำเนินการ</option>
         </select>
 
-        <button onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
+        <button id="submitBtn" onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
         <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
     </div>
 </div>
@@ -131,6 +131,9 @@
     }
 
     async function saveData() {
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn.disabled) return; // กันกดซ้ำระหว่างกำลังส่งข้อมูล
+
         const detail = document.getElementById("detail").value.trim();
         if (detail === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
@@ -153,6 +156,10 @@
             lineUserId: lineUser.id
         };
 
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.6";
+        submitBtn.style.cursor = "not-allowed";
+
         try {
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
             const response = await fetch(API_URL, {
@@ -162,10 +169,21 @@
             });
             const result = await response.json();
             alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) liff.closeWindow();
+            if (result.success) {
+                liff.closeWindow();
+            } else {
+                // บันทึกไม่สำเร็จ (รวมถึงกรณีตรวจพบข้อมูลซ้ำ) ปลดล็อกปุ่มให้กดใหม่ได้
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = "1";
+                submitBtn.style.cursor = "pointer";
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "เริ่มต้น" : "Ready";
+            }
         } catch (err) {
             alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "เกิดข้อผิดพลาด" : "Error";
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
         }
     }
 
