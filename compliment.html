@@ -16,6 +16,7 @@
         input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
         textarea { height: 120px; }
         button { width: 100%; height: 55px; margin-top: 20px; border: none; border-radius: 12px; background: #008f39; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button:disabled { cursor: not-allowed; }
         .line-user { background: #eef8ef; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
         .status { font-size: 13px; color: #777; margin-top: 15px; }
         
@@ -56,7 +57,7 @@
             <option value="รอดำเนินการ" class="i18n" data-th="รอดำเนินการ" data-en="Pending">รอดำเนินการ</option>
         </select>
 
-        <button onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
+        <button id="submitBtn" onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
         <div class="status" id="msg"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="พร้อมใช้งาน" data-en="Ready">พร้อมใช้งาน</span></div>
     </div>
 </div>
@@ -106,6 +107,9 @@
     }
 
     async function saveData() {
+        const submitBtn = document.getElementById("submitBtn");
+        if (submitBtn.disabled) return; // กันกดซ้ำระหว่างกำลังส่งข้อมูล
+
         const detail = document.getElementById("detail").value.trim();
         if (detail === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
@@ -123,6 +127,10 @@
             lineUserId: lineUser.id
         };
 
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.6";
+        submitBtn.style.cursor = "not-allowed";
+
         try {
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
             const response = await fetch(API_URL, {
@@ -132,10 +140,20 @@
             });
             const result = await response.json();
             alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) liff.closeWindow();
+            if (result.success) {
+                liff.closeWindow();
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = "1";
+                submitBtn.style.cursor = "pointer";
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "พร้อมใช้งาน" : "Ready";
+            }
         } catch (err) {
             alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
             document.getElementById("status-text").innerText = "Error: " + err.message;
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = "1";
+            submitBtn.style.cursor = "pointer";
         }
     }
 
