@@ -83,28 +83,34 @@
         lineUser = { id: profile.userId, name: profile.displayName };
         document.getElementById("userName").innerText = profile.displayName;
 
-        // 🟢 1. แสดงฟอร์มทันทีเพื่อให้ผู้ใช้ไม่ต้องนั่งรอ
-        document.getElementById("form-content").style.display = "block";
-
-        // 🟢 2. ยิงเช็กสิทธิ์และภาษาเบื้องหลัง (Async) ไม่ใช้ await บล็อกหน้าจอ
+        // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง
         fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
-            .then(r => r.json())
+            .then(res => res.json())
             .then(res => {
                 if (res.registered) {
+                    // ถ้าลงทะเบียนแล้ว ให้สลับภาษาตามตั้งค่า
                     if (res.lang) switchLanguage(res.lang);
                 } else {
-                    // ถ้าไม่พบการลงทะเบียน ค่อยปิดฟอร์มแล้วแสดงหน้าปฏิเสธสิทธิ์
-                    document.getElementById("form-content").style.display = "none";
-                    document.getElementById("access-denied").style.display = "block";
+                    // ถ้ายังไม่ได้ลงทะเบียน ซ่อนฟอร์มและขึ้นเตือนเตือนทันทีโดยไม่ต้องแก้ HTML
+                    const card = document.querySelector(".card");
+                    if (card) {
+                        card.innerHTML = `
+                            <div style="text-align: center; padding: 15px 5px;">
+                                <h2 style="color: #d71920; margin-top: 0; font-size: 22px;">⚠️ ไม่พบข้อมูลพนักงาน</h2>
+                                <p style="color: #555; font-size: 15px; margin: 15px 0 20px 0;">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
+                                <button onclick="liff.closeWindow()" style="background: #d71920; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; max-width: 200px;">ปิดหน้าต่าง</button>
+                            </div>
+                        `;
+                    }
                 }
             })
-            .catch(() => {
-                // กรณี API มีปัญหา
-            });
+            .catch(err => console.log("Lang check error:", err));
 
     } catch (e) {
-        document.getElementById("form-content").style.display = "none";
-        document.getElementById("access-denied").style.display = "block";
+        document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+        if (document.getElementById("status-text")) {
+            document.getElementById("status-text").innerText = "Error: " + e.message;
+        }
     }
 }
 
