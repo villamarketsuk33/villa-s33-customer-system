@@ -73,25 +73,40 @@
     }
 
     async function initLINE() {
-        try {
-            await liff.init({ liffId: LIFF_ID });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-                return;
-            }
-            const profile = await liff.getProfile();
-            lineUser = { id: profile.userId, name: profile.displayName };
-            document.getElementById("userName").innerText = profile.displayName;
-
-            fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
-                .then(res => res.json())
-                .then(res => { if (res.lang) switchLanguage(res.lang); })
-                .catch(err => console.log(err));
-
-        } catch (e) {
-            document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+    try {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+            liff.login();
+            return;
         }
+        const profile = await liff.getProfile();
+        lineUser = { id: profile.userId, name: profile.displayName };
+        document.getElementById("userName").innerText = profile.displayName;
+
+        // 🟢 1. แสดงฟอร์มทันทีเพื่อให้ผู้ใช้ไม่ต้องนั่งรอ
+        document.getElementById("form-content").style.display = "block";
+
+        // 🟢 2. ยิงเช็กสิทธิ์และภาษาเบื้องหลัง (Async) ไม่ใช้ await บล็อกหน้าจอ
+        fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
+            .then(r => r.json())
+            .then(res => {
+                if (res.registered) {
+                    if (res.lang) switchLanguage(res.lang);
+                } else {
+                    // ถ้าไม่พบการลงทะเบียน ค่อยปิดฟอร์มแล้วแสดงหน้าปฏิเสธสิทธิ์
+                    document.getElementById("form-content").style.display = "none";
+                    document.getElementById("access-denied").style.display = "block";
+                }
+            })
+            .catch(() => {
+                // กรณี API มีปัญหา
+            });
+
+    } catch (e) {
+        document.getElementById("form-content").style.display = "none";
+        document.getElementById("access-denied").style.display = "block";
     }
+}
 
     async function saveData() {
         const submitBtn = document.getElementById("submitBtn");
