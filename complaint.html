@@ -73,54 +73,62 @@
     }
 
     async function initLINE() {
-    try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
-        }
-        const profile = await liff.getProfile();
-        lineUser = { id: profile.userId, name: profile.displayName };
-        document.getElementById("userName").innerText = profile.displayName;
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            const profile = await liff.getProfile();
+            lineUser = { id: profile.userId, name: profile.displayName };
+            document.getElementById("userName").innerText = profile.displayName;
 
-        // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง
-        fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
-            .then(res => res.json())
-            .then(res => {
-                if (res.registered) {
-                    // ถ้าลงทะเบียนแล้ว ให้สลับภาษาตามตั้งค่า
-                    if (res.lang) switchLanguage(res.lang);
-                } else {
-                    // ถ้ายังไม่ได้ลงทะเบียน ซ่อนฟอร์มและขึ้นเตือนเตือนทันทีโดยไม่ต้องแก้ HTML
-                    const card = document.querySelector(".card");
-                    if (card) {
-                        card.innerHTML = `
-                            <div style="text-align: center; padding: 15px 5px;">
-                                <h2 style="color: #d71920; margin-top: 0; font-size: 22px;">⚠️ ไม่พบข้อมูลพนักงาน</h2>
-                                <p style="color: #555; font-size: 15px; margin: 15px 0 20px 0;">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
-                                <button onclick="liff.closeWindow()" style="background: #d71920; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; max-width: 200px;">ปิดหน้าต่าง</button>
-                            </div>
-                        `;
+            fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.registered) {
+                        // ถ้าลงทะเบียนแล้ว ให้สลับภาษาตามตั้งค่า (handle uppercase/lowercase)
+                        if (res.lang) switchLanguage(res.lang.toUpperCase());
+                    } else {
+                        // ถ้ายังไม่ได้ลงทะเบียน ซ่อนฟอร์มและขึ้นเตือนเตือนทันที
+                        const card = document.querySelector(".card");
+                        if (card) {
+                            card.innerHTML = `
+                                <div style="text-align: center; padding: 15px 5px;">
+                                    <h2 style="color: #d71920; margin-top: 0; font-size: 22px;">⚠️ ไม่พบข้อมูลพนักงาน</h2>
+                                    <p style="color: #555; font-size: 15px; margin: 15px 0 20px 0;">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
+                                    <button onclick="liff.closeWindow()" style="background: #d71920; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; max-width: 200px;">ปิดหน้าต่าง</button>
+                                </div>
+                            `;
+                        }
                     }
-                }
-            })
-            .catch(err => console.log("Lang check error:", err));
+                })
+                .catch(err => console.log("Lang check error:", err));
 
-    } catch (e) {
-        document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
-        if (document.getElementById("status-text")) {
-            document.getElementById("status-text").innerText = "Error: " + e.message;
+        } catch (e) {
+            document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
         }
     }
-}
 
     async function saveData() {
         const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn.disabled) return; // กันกดซ้ำระหว่างกำลังส่งข้อมูล
+        if (submitBtn.disabled) return;
 
         const detail = document.getElementById("detail").value.trim();
+        const customer = document.getElementById("customer").value.trim();
+        const requestAction = document.getElementById("requestAction").value.trim();
+
+        // เช็คทุกช่องต้องกรอก
         if (detail === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
+            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียดปัญหา" : "Please enter complaint details");
+            return;
+        }
+        if (customer === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอกชื่อลูกค้า / เบอร์ติดต่อ" : "Please enter customer name/contact");
+            return;
+        }
+        if (requestAction === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอกการดำเนินการแก้ไข" : "Please enter corrective action");
             return;
         }
 
@@ -128,8 +136,8 @@
             action: "saveCustomer",
             type: "คอมเพลนลูกค้า",
             detail: detail,
-            customer: document.getElementById("customer").value,
-            requestAction: document.getElementById("requestAction").value,
+            customer: customer,
+            requestAction: requestAction,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
