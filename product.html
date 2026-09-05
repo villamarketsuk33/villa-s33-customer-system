@@ -32,7 +32,7 @@
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
-    <div class="card" id="access-denied">
+    <div class="card" id="access-denied" style="display:none;">
         <h2 style="color:#d71920; margin-top:0;" class="i18n" data-th="⚠️ ไม่พบข้อมูลพนักงาน" data-en="⚠️ Employee Not Found">⚠️ ไม่พบข้อมูลพนักงาน</h2>
         <p class="i18n" data-th="กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ" data-en="Please register as an employee before using the system.">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
         <button class="reg-btn i18n" onclick="liff.closeWindow()" data-th="ปิดหน้าต่าง" data-en="Close Window">ปิดหน้าต่าง</button>
@@ -116,13 +116,16 @@
             const res = await fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`).then(r => r.json());
             
             if (res.registered) {
+                document.getElementById("access-denied").style.display = "none";
                 document.getElementById("form-content").style.display = "block";
                 if (res.lang) switchLanguage(res.lang);
             } else {
+                document.getElementById("form-content").style.display = "none";
                 document.getElementById("access-denied").style.display = "block";
             }
 
         } catch (e) {
+            document.getElementById("form-content").style.display = "none";
             document.getElementById("access-denied").style.display = "block";
         }
     }
