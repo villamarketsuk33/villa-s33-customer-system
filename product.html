@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ลูกค้าถามหาสินค้า - Villa Market S33</title>
+    <title>ติดตามสินค้า - Villa Market S33</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -18,8 +18,6 @@
         button { width: 100%; height: 55px; margin-top: 20px; background: #005bbb; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .line-box { background: #eef5ff; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
         .status { font-size: 13px; color: #666; margin-top: 15px; }
-        #access-denied { display: none; text-align: center; padding: 30px 15px; }
-        .reg-btn { background: #d71920; color: white; border: none; padding: 12px 20px; border-radius: 10px; display: inline-block; margin-top: 15px; font-weight: bold; cursor: pointer; }
 
         .checkbox-group { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
         .checkbox-item { display: flex; align-items: center; background: #f7f9fc; border: 1px solid #ddd; border-radius: 10px; padding: 12px; cursor: pointer; }
@@ -30,7 +28,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ลูกค้าถามหาสินค้า</h1>
+        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ติดตามสินค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
@@ -48,11 +46,11 @@
         <label class="i18n" data-th="ประเภทเรื่อง" data-en="Request Type">ประเภทเรื่อง</label>
         <div class="checkbox-group">
             <label class="checkbox-item">
-                <input type="checkbox" id="cbAsk" value="ลูกค้าถามหาสินค้า" onchange="if(this.checked) document.getElementById('cbFollow').checked = false;">
+                <input type="checkbox" id="cbAsk" value="ลูกค้าถามหาสินค้า" onclick="selectRequestType('cbAsk')">
                 <span class="i18n" data-th="ลูกค้าถามหาสินค้า" data-en="Customer asking for a product">ลูกค้าถามหาสินค้า</span>
             </label>
             <label class="checkbox-item">
-                <input type="checkbox" id="cbFollow" value="ติดตามสินค้าให้ลูกค้า" onchange="if(this.checked) document.getElementById('cbAsk').checked = false;">
+                <input type="checkbox" id="cbFollow" value="ติดตามสินค้าให้ลูกค้า" onclick="selectRequestType('cbFollow')">
                 <span class="i18n" data-th="ติดตามสินค้าให้ลูกค้า" data-en="Following up on a product for customer">ติดตามสินค้าให้ลูกค้า</span>
             </label>
         </div>
@@ -83,6 +81,14 @@
     let lineUser = {};
     let currentLang = 'TH';
 
+    // ทำให้ checkbox 2 ตัวเลือกได้แค่ตัวเดียว (เหมือน radio button)
+    function selectRequestType(selectedId) {
+        const ids = ['cbAsk', 'cbFollow'];
+        ids.forEach(id => {
+            if (id !== selectedId) document.getElementById(id).checked = false;
+        });
+    }
+
     function switchLanguage(lang) {
         currentLang = lang;
 
@@ -97,48 +103,49 @@
     }
 
     async function initLINE() {
-    try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-            liff.login();
-            return;
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+                return;
+            }
+            const profile = await liff.getProfile();
+            lineUser = { id: profile.userId, name: profile.displayName };
+            document.getElementById("userName").innerText = profile.displayName;
+
+            const res = await fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`).then(r => r.json());
+            
+            if (res.registered) {
+                document.getElementById("form-content").style.display = "block";
+                if (res.lang) switchLanguage(res.lang);
+            } else {
+                document.getElementById("access-denied").style.display = "block";
+            }
+
+        } catch (e) {
+            document.getElementById("access-denied").style.display = "block";
         }
-        const profile = await liff.getProfile();
-        lineUser = { id: profile.userId, name: profile.displayName };
-        document.getElementById("userName").innerText = profile.displayName;
-
-        // 🟢 1. แสดงฟอร์มทันทีเพื่อให้ผู้ใช้ไม่ต้องนั่งรอ
-        document.getElementById("form-content").style.display = "block";
-
-        // 🟢 2. ยิงเช็กสิทธิ์และภาษาเบื้องหลัง (Async) ไม่ใช้ await บล็อกหน้าจอ
-        fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
-            .then(r => r.json())
-            .then(res => {
-                if (res.registered) {
-                    if (res.lang) switchLanguage(res.lang);
-                } else {
-                    // ถ้าไม่พบการลงทะเบียน ค่อยปิดฟอร์มแล้วแสดงหน้าปฏิเสธสิทธิ์
-                    document.getElementById("form-content").style.display = "none";
-                    document.getElementById("access-denied").style.display = "block";
-                }
-            })
-            .catch(() => {
-                // กรณี API มีปัญหา
-            });
-
-    } catch (e) {
-        document.getElementById("form-content").style.display = "none";
-        document.getElementById("access-denied").style.display = "block";
     }
-}
 
     async function saveData() {
         const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn.disabled) return; // กันกดซ้ำระหว่างกำลังส่งข้อมูล
+        if (submitBtn.disabled) return;
 
         const detail = document.getElementById("detail").value.trim();
+        const customer = document.getElementById("customer").value.trim();
+        const requestAction = document.getElementById("requestAction").value.trim();
+
+        // เช็คทุกช่องต้องกรอก
         if (detail === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียด" : "Please enter details");
+            return;
+        }
+        if (customer === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอกชื่อลูกค้า / เบอร์ติดต่อ" : "Please enter customer name/contact");
+            return;
+        }
+        if (requestAction === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอกการดำเนินการ / ผลการตรวจสอบ" : "Please enter action/result");
             return;
         }
 
@@ -146,13 +153,18 @@
         if (document.getElementById("cbAsk").checked) requestTypes.push(document.getElementById("cbAsk").value);
         if (document.getElementById("cbFollow").checked) requestTypes.push(document.getElementById("cbFollow").value);
 
+        if (requestTypes.length === 0) {
+            alert(currentLang === 'TH' ? "กรุณาเลือกประเภทเรื่องอย่างน้อย 1 รายการ" : "Please select at least one request type");
+            return;
+        }
+
         const data = {
             action: "saveCustomer",
             type: "ติดตามสินค้า_2",
             requestType: requestTypes.join(", "),
             detail: detail,
-            customer: document.getElementById("customer").value,
-            requestAction: document.getElementById("requestAction").value,
+            customer: customer,
+            requestAction: requestAction,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
@@ -174,7 +186,6 @@
             if (result.success) {
                 liff.closeWindow();
             } else {
-                // บันทึกไม่สำเร็จ (รวมถึงกรณีตรวจพบข้อมูลซ้ำ) ปลดล็อกปุ่มให้กดใหม่ได้
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = "1";
                 submitBtn.style.cursor = "pointer";
