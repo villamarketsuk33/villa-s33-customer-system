@@ -32,13 +32,7 @@
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
-    <div class="card" id="access-denied" style="display:none;">
-        <h2 style="color:#d71920; margin-top:0;" class="i18n" data-th="⚠️ ไม่พบข้อมูลพนักงาน" data-en="⚠️ Employee Not Found">⚠️ ไม่พบข้อมูลพนักงาน</h2>
-        <p class="i18n" data-th="กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ" data-en="Please register as an employee before using the system.">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
-        <button class="reg-btn i18n" onclick="liff.closeWindow()" data-th="ปิดหน้าต่าง" data-en="Close Window">ปิดหน้าต่าง</button>
-    </div>
-
-    <div class="card" id="form-content" style="display:none;">
+    <div class="card" id="form-content">
         <div class="line-box">
             <div><span class="i18n" data-th="ผู้รับเรื่อง:" data-en="Receiver:">ผู้รับเรื่อง:</span> <span id="userName">กำลังโหลด...</span></div>
         </div>
@@ -113,20 +107,34 @@
             lineUser = { id: profile.userId, name: profile.displayName };
             document.getElementById("userName").innerText = profile.displayName;
 
-            const res = await fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`).then(r => r.json());
-            
-            if (res.registered) {
-                document.getElementById("access-denied").style.display = "none";
-                document.getElementById("form-content").style.display = "block";
-                if (res.lang) switchLanguage(res.lang);
-            } else {
-                document.getElementById("form-content").style.display = "none";
-                document.getElementById("access-denied").style.display = "block";
-            }
+            // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง (ฟอร์มแสดงอยู่แล้วระหว่างรอผล)
+            fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.registered) {
+                        // ถ้าลงทะเบียนแล้ว ให้สลับภาษาตามตั้งค่า
+                        if (res.lang) switchLanguage(res.lang);
+                    } else {
+                        // ถ้ายังไม่ได้ลงทะเบียน ซ่อนฟอร์มและขึ้นเตือนทันทีโดยไม่ต้องแก้ HTML
+                        const card = document.getElementById("form-content");
+                        if (card) {
+                            card.innerHTML = `
+                                <div style="text-align: center; padding: 15px 5px;">
+                                    <h2 style="color: #d71920; margin-top: 0; font-size: 22px;">⚠️ ไม่พบข้อมูลพนักงาน</h2>
+                                    <p style="color: #555; font-size: 15px; margin: 15px 0 20px 0;">กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ</p>
+                                    <button onclick="liff.closeWindow()" style="background: #d71920; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; max-width: 200px;">ปิดหน้าต่าง</button>
+                                </div>
+                            `;
+                        }
+                    }
+                })
+                .catch(err => console.log("Lang check error:", err));
 
         } catch (e) {
-            document.getElementById("form-content").style.display = "none";
-            document.getElementById("access-denied").style.display = "block";
+            document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+            if (document.getElementById("status-text")) {
+                document.getElementById("status-text").innerText = "Error: " + e.message;
+            }
         }
     }
 
