@@ -368,6 +368,17 @@
 
       } catch (e) {
         console.error("LIFF init/auth error:", e);
+        const msg = ((e && e.message) || "").toLowerCase();
+        const isTokenIssue = msg.includes("token") || msg.includes("expired") || msg.includes("forbidden");
+
+        if (isTokenIssue) {
+          // 🔄 Token เก่าหมดอายุ/ใช้ไม่ได้ (มักเกิดเพราะเคยล็อกอินหน้าฟอร์มอื่นด้วย LIFF ID เดียวกันมาก่อน)
+          // เคลียร์ session เก่าแล้วบังคับล็อกอินใหม่อัตโนมัติ แทนที่จะค้างเป็น error
+          try { liff.logout(); } catch (_) {}
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
         showAccessDenied("⚠️ เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองเปิดใหม่อีกครั้ง (" + e.message + ")");
       }
     }
