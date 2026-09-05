@@ -10,6 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- LIFF SDK (ใช้ LIFF ID เดียวกับฟอร์ม compliment/complaint/product-tracking) -->
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
@@ -22,6 +24,14 @@
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 pb-10 font-sans antialiased selection:bg-red-500 selection:text-white">
+
+  <!-- 🔒 Access Gate: บังหน้าจอทั้งหมดไว้จนกว่าจะตรวจสอบสิทธิ์ Manager เสร็จ -->
+  <div id="access-gate" class="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+    <div id="access-gate-content" class="text-center px-6">
+      <div class="animate-spin w-10 h-10 border-4 border-blue-900 border-t-transparent rounded-full mx-auto mb-4"></div>
+      <p class="text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
+    </div>
+  </div>
 
   <!-- Navigation / Header (Villa Market Navy & Red Branding) -->
   <header class="bg-[#0B1E36] text-white shadow-lg sticky top-0 z-40 border-b-4 border-red-600">
@@ -306,17 +316,72 @@
   <script>
     // Configuration & Live Apps Script Endpoint
     const LIVE_API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
-    
+
+    // 🔑 ใช้ LIFF ID เดียวกับฟอร์ม compliment/complaint/product-tracking (ไม่ต้องสร้างใหม่)
+    // ⚠️ สำคัญ: ห้ามเปิดหน้านี้ผ่านลิงก์ https://liff.line.me/{liffId} เด็ดขาด เพราะ LINE จะพา
+    // ไปที่ Endpoint URL ที่ตั้งไว้ใน Console (หน้าฟอร์มเดิม) ไม่ใช่หน้า dashboard นี้
+    // ให้แชร์ลิงก์ URL จริงของไฟล์ dashboard.html นี้ตรงๆ แทน (เช่น ปุ่ม "Open URL" ใน Rich Menu)
+    const LIFF_ID = "2011171771-2kU5r1Xp";
+
     let rawData = [];
     let activeFilteredData = [];
     let currentEmpRecords = [];
     let typeChartInstance = null;
     let statusChartInstance = null;
+    let currentLineUserId = null;
 
     window.onload = function() {
       lucide.createIcons();
-      loadData();
+      initLIFFAndCheckAccess();
     };
+
+    // 🔒 ล็อกอินผ่าน LIFF แล้วเช็ก role ก่อนปล่อยให้เห็นหน้า Dashboard จริง
+    async function initLIFFAndCheckAccess() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+
+        if (!liff.isLoggedIn()) {
+          // ใส่ redirectUri ชี้กลับมาหน้านี้เอง กันเด้งไปหน้าฟอร์มเดิมหลังล็อกอินครั้งแรก
+          liff.login({ redirectUri: window.location.href });
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        currentLineUserId = profile.userId;
+
+        const res = await fetch(`${LIVE_API_URL}?action=getUserLang&lineUserId=${currentLineUserId}`)
+          .then(r => r.json());
+
+        if (!res.registered) {
+          showAccessDenied("⚠️ ไม่พบข้อมูลพนักงาน", "กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ");
+          return;
+        }
+        if (res.role !== "Manager") {
+          showAccessDenied("⚠️ ไม่มีสิทธิ์เข้าถึง", "หน้า Dashboard นี้สำหรับ Manager เท่านั้น");
+          return;
+        }
+
+        // ✅ ผ่านการตรวจสอบแล้ว — เปิดหน้า Dashboard จริง
+        document.getElementById('access-gate').style.display = 'none';
+        lucide.createIcons();
+        loadData();
+
+      } catch (e) {
+        console.error("LIFF init/auth error:", e);
+        showAccessDenied("⚠️ เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสิทธิ์ได้ กรุณาลองเปิดใหม่อีกครั้ง (" + e.message + ")");
+      }
+    }
+
+    function showAccessDenied(title, message) {
+      document.getElementById('access-gate-content').innerHTML = `
+        <div class="text-center px-6 max-w-sm">
+          <div class="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⚠️</div>
+          <h2 class="text-lg font-bold text-slate-800 mb-2">${title}</h2>
+          <p class="text-slate-500 text-sm">${message}</p>
+        </div>
+      `;
+      document.getElementById('access-gate').style.display = 'flex';
+    }
 
     function loadData() {
       const refreshIcon = document.getElementById('refresh-icon');
@@ -325,7 +390,7 @@
       if (refreshIcon) refreshIcon.classList.add('animate-spin');
       if (refreshIconMobile) refreshIconMobile.classList.add('animate-spin');
 
-      fetch(`${LIVE_API_URL}?action=getDashboardData`)
+      fetch(`${LIVE_API_URL}?action=getDashboardData&lineUserId=${currentLineUserId || ''}`)
         .then(res => res.json())
         .then(res => {
           if (res.success && Array.isArray(res.data)) {
@@ -333,6 +398,11 @@
           } else {
             console.warn("API response empty or invalid", res);
             rawData = [];
+            // เผื่อกรณี role เปลี่ยนระหว่างใช้งาน (ถูกถอดสิทธิ์ Manager กลางคัน)
+            if (res.message) {
+              showAccessDenied("⚠️ ไม่มีสิทธิ์เข้าถึงข้อมูล", res.message);
+              return;
+            }
           }
           setPresetFilter('all');
         })
