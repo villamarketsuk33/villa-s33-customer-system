@@ -58,6 +58,114 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
     let lineUser = { id: "", name: "" };
     let currentLang = 'TH';
+    let isSubmitting = false;
+    const DUPLICATE_GUARD_MS = 10 * 60 * 1000;
+
+    function normalizeSubmissionValue(value) {
+        return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    function hashSubmission(value) {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i += 1) {
+            hash ^= value.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    }
+
+    function getSubmissionKey(data) {
+        const fingerprint = [
+            data.type,
+            data.requestType,
+            data.detail,
+            data.customer,
+            data.requestAction,
+            data.status,
+            data.lineUserId
+        ].map(normalizeSubmissionValue).join("|");
+        return `villa-s33-submit:${hashSubmission(fingerprint)}`;
+    }
+
+    function readSubmission(key) {
+        try {
+            return JSON.parse(localStorage.getItem(key) || "null");
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function writeSubmission(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (_) {}
+    }
+
+    function removeSubmission(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (_) {}
+    }
+
+    function createRequestId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+            return window.crypto.randomUUID();
+        }
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function beginSubmission(data) {
+        const key = getSubmissionKey(data);
+        const previous = readSubmission(key);
+        const now = Date.now();
+
+        if (previous && now - previous.createdAt < DUPLICATE_GUARD_MS) {
+            return { blocked: true, state: previous.state };
+        }
+
+        removeSubmission(key);
+        data.requestId = createRequestId();
+        writeSubmission(key, {
+            requestId: data.requestId,
+            state: "pending",
+            createdAt: now
+        });
+        return { blocked: false, key };
+    }
+
+    function updateSubmissionState(key, state) {
+        const current = readSubmission(key) || {};
+        writeSubmission(key, {
+            requestId: current.requestId || "",
+            state,
+            createdAt: current.createdAt || Date.now()
+        });
+    }
+
+    async function readApiResult(response) {
+        const responseText = await response.text();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const trimmed = responseText.trim();
+        if (trimmed === "" || trimmed.toUpperCase() === "OK") {
+            return { success: true };
+        }
+
+        try {
+            return JSON.parse(trimmed);
+        } catch (_) {
+            throw new Error("API returned an invalid response");
+        }
+    }
+
+    function setSubmitBusy(button, busy) {
+        isSubmitting = busy;
+        button.disabled = busy;
+        button.style.opacity = busy ? "0.6" : "1";
+        button.style.cursor = busy ? "not-allowed" : "pointer";
+    }
 
     function switchLanguage(lang) {
         currentLang = lang;
@@ -114,7 +222,7 @@
 
     async function saveData() {
         const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn.disabled) return;
+        if (isSubmitting || submitBtn.disabled) return;
 
         const detail = document.getElementById("detail").value.trim();
         const customer = document.getElementById("customer").value.trim();
@@ -145,9 +253,22 @@
             lineUserId: lineUser.id
         };
 
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.6";
-        submitBtn.style.cursor = "not-allowed";
+        if (!lineUser.id) {
+            alert(currentLang === 'TH' ? "กรุณารอให้ระบบโหลดข้อมูลผู้บันทึกให้เสร็จก่อน" : "Please wait for the user profile to finish loading");
+            return;
+        }
+
+        const submission = beginSubmission(data);
+        if (submission.blocked) {
+            const message = submission.state === "success"
+                ? (currentLang === 'TH' ? "รายการนี้บันทึกเรียบร้อยแล้ว ไม่ต้องกดซ้ำ" : "This entry has already been saved")
+                : (currentLang === 'TH' ? "รายการนี้ถูกส่งไปแล้ว ระบบอาจบันทึกสำเร็จ กรุณาอย่ากดซ้ำ" : "This entry was already sent. Please do not submit it again");
+            alert(message);
+            return;
+        }
+
+        setSubmitBusy(submitBtn, true);
+        let serverConfirmedFailure = false;
 
         try {
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
@@ -156,22 +277,29 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            const result = await response.json();
-            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) {
-                liff.closeWindow();
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = "1";
-                submitBtn.style.cursor = "pointer";
-                document.getElementById("status-text").innerText = currentLang === 'TH' ? "พร้อมใช้งาน" : "Ready";
+            const result = await readApiResult(response);
+            if (!result.success) {
+                serverConfirmedFailure = true;
+                removeSubmission(submission.key);
+                throw new Error(result.message || (currentLang === 'TH' ? "บันทึกไม่สำเร็จ" : "Save failed"));
             }
+
+            updateSubmissionState(submission.key, "success");
+            document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved";
+            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
+            liff.closeWindow();
         } catch (err) {
-            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
-            document.getElementById("status-text").innerText = "Error: " + err.message;
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            submitBtn.style.cursor = "pointer";
+            if (serverConfirmedFailure) {
+                alert(err.message);
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกไม่สำเร็จ กรุณาลองใหม่" : "Save failed. Please try again";
+            } else {
+                updateSubmissionState(submission.key, "unknown");
+                alert(currentLang === 'TH'
+                    ? "ระบบไม่สามารถยืนยันผลได้ และข้อมูลอาจบันทึกสำเร็จแล้ว กรุณาตรวจสอบก่อนและอย่ากดซ้ำ"
+                    : "The result could not be confirmed and the entry may already be saved. Please check before retrying");
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "รอตรวจสอบผล — ห้ามกดซ้ำ" : "Check result — do not resubmit";
+            }
+            setSubmitBusy(submitBtn, false);
         }
     }
 
