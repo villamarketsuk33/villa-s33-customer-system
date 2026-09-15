@@ -3,44 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>คำชมลูกค้า - Villa Market S33</title>
+    <title>Complaint - Villa Market S33</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
         .container { max-width: 480px; margin: auto; }
-        .header { background: #008f39; color: white; padding: 25px; border-radius: 18px; text-align: center; position: relative; }
+        .header { background: #d71920; color: white; padding: 25px; border-radius: 18px; text-align: center; }
         .header h1 { margin: 0; font-size: 26px; }
-        .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
+        .card { background: white; padding: 20px; margin-top: 15px; border-radius: 18px; }
         label { font-weight: bold; display: block; margin-top: 15px; }
         input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
         textarea { height: 120px; }
-        button { width: 100%; height: 55px; margin-top: 20px; border: none; border-radius: 12px; background: #008f39; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; height: 55px; margin-top: 20px; background: #d71920; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { cursor: not-allowed; }
-        .line-user { background: #eef8ef; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .status { font-size: 13px; color: #777; margin-top: 15px; }
+        .line-box { background: #fff0f0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .status { margin-top: 15px; font-size: 13px; color: #666; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1 class="i18n" data-th="🟢 คำชมลูกค้า" data-en="🟢 Customer Compliment">🟢 คำชมลูกค้า</h1>
+        <h1 class="i18n" data-th="🔴 คอมเพลนลูกค้า" data-en="🔴 Customer Complaint">🔴 คอมเพลนลูกค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
     <div class="card">
-        <div class="line-user">
-            <div><span class="i18n" data-th="ผู้บันทึก:" data-en="Recorded by:">ผู้บันทึก:</span> <span id="userName">กำลังโหลด...</span></div>
+        <div class="line-box">
+            <div><span class="i18n" data-th="ผู้รับเรื่อง:" data-en="Receiver:">ผู้รับเรื่อง:</span> <span id="userName">กำลังโหลด...</span></div>
         </div>
 
-        <label class="i18n" data-th="รายละเอียดคำชมจากลูกค้า" data-en="Compliment Details">รายละเอียดคำชมจากลูกค้า</label>
-        <textarea id="detail" class="i18n-ph" data-th-ph="เช่น ลูกค้าชื่นชมพนักงานบริการดี ช่วยแนะนำสินค้า" data-en-ph="e.g., Customer praised helpful service"></textarea>
+        <label class="i18n" data-th="รายละเอียดปัญหาจากลูกค้า" data-en="Complaint Details">รายละเอียดปัญหาจากลูกค้า</label>
+        <textarea id="detail" class="i18n-ph" data-th-ph="ระบุรายละเอียดปัญหา" data-en-ph="Specify problem details"></textarea>
 
         <label class="i18n" data-th="ชื่อลูกค้า / เบอร์ติดต่อ" data-en="Customer Name / Contact">ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional" />
+        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional">
 
-        <label class="i18n" data-th="Action จากพนักงาน" data-en="Action Taken">Action จากพนักงาน</label>
-        <textarea id="action" class="i18n-ph" data-th-ph="ดำเนินการอย่างไร" data-en-ph="Action details"></textarea>
+        <label class="i18n" data-th="การดำเนินการแก้ไข" data-en="Corrective Action Taken">การดำเนินการแก้ไข</label>
+        <textarea id="requestAction" class="i18n-ph" data-th-ph="หัวหน้างานดำเนินการอย่างไร" data-en-ph="Action taken by supervisor"></textarea>
 
         <label class="i18n" data-th="สถานะ" data-en="Status">สถานะ</label>
         <select id="status">
@@ -49,14 +49,14 @@
         </select>
 
         <button id="submitBtn" onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
-        <div class="status" id="msg"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="พร้อมใช้งาน" data-en="Ready">พร้อมใช้งาน</span></div>
+        <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
     </div>
 </div>
 
 <script>
     const LIFF_ID = "2011171771-2kU5r1Xp";
     const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
-    let lineUser = { id: "", name: "" };
+    let lineUser = {};
     let currentLang = 'TH';
     let isSubmitting = false;
     const DUPLICATE_GUARD_MS = 10 * 60 * 1000;
@@ -191,7 +191,6 @@
             lineUser = { id: profile.userId, name: profile.displayName };
             document.getElementById("userName").innerText = profile.displayName;
 
-            // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง
             fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
                 .then(res => res.json())
                 .then(res => {
@@ -216,7 +215,6 @@
 
         } catch (e) {
             document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
-            document.getElementById("status-text").innerText = "Error: " + e.message;
         }
     }
 
@@ -226,35 +224,35 @@
 
         const detail = document.getElementById("detail").value.trim();
         const customer = document.getElementById("customer").value.trim();
-        const action = document.getElementById("action").value.trim();
+        const requestAction = document.getElementById("requestAction").value.trim();
 
         // เช็คทุกช่องต้องกรอก
         if (detail === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียดคำชม" : "Please enter compliment details");
+            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียดปัญหา" : "Please enter complaint details");
             return;
         }
         if (customer === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกชื่อลูกค้า / เบอร์ติดต่อ" : "Please enter customer name/contact");
             return;
         }
-        if (action === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอก Action จากพนักงาน" : "Please enter action taken");
+        if (requestAction === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอกการดำเนินการแก้ไข" : "Please enter corrective action");
             return;
         }
 
         const data = {
             action: "saveCustomer",
-            type: "คำชมลูกค้า",
+            type: "คอมเพลนลูกค้า",
             detail: detail,
             customer: customer,
-            requestAction: action,
+            requestAction: requestAction,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
         };
 
         if (!lineUser.id) {
-            alert(currentLang === 'TH' ? "กรุณารอให้ระบบโหลดข้อมูลผู้บันทึกให้เสร็จก่อน" : "Please wait for the user profile to finish loading");
+            alert(currentLang === 'TH' ? "กรุณารอให้ระบบโหลดข้อมูลผู้รับเรื่องให้เสร็จก่อน" : "Please wait for the user profile to finish loading");
             return;
         }
 
