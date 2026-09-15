@@ -3,44 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complaint - Villa Market S33</title>
+    <title>คำชมลูกค้า - Villa Market S33</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; padding: 15px; background: #f3f5f8; font-family: Arial, "Noto Sans Thai", sans-serif; }
         .container { max-width: 480px; margin: auto; }
-        .header { background: #d71920; color: white; padding: 25px; border-radius: 18px; text-align: center; }
+        .header { background: #008f39; color: white; padding: 25px; border-radius: 18px; text-align: center; position: relative; }
         .header h1 { margin: 0; font-size: 26px; }
-        .card { background: white; padding: 20px; margin-top: 15px; border-radius: 18px; }
+        .card { background: white; padding: 20px; border-radius: 18px; margin-top: 15px; }
         label { font-weight: bold; display: block; margin-top: 15px; }
         input, textarea, select { width: 100%; padding: 12px; font-size: 16px; border-radius: 10px; border: 1px solid #ccc; margin-top: 8px; }
         textarea { height: 120px; }
-        button { width: 100%; height: 55px; margin-top: 20px; background: #d71920; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; height: 55px; margin-top: 20px; border: none; border-radius: 12px; background: #008f39; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { cursor: not-allowed; }
-        .line-box { background: #fff0f0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .status { margin-top: 15px; font-size: 13px; color: #666; }
+        .line-user { background: #eef8ef; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .status { font-size: 13px; color: #777; margin-top: 15px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1 class="i18n" data-th="🔴 คอมเพลนลูกค้า" data-en="🔴 Customer Complaint">🔴 คอมเพลนลูกค้า</h1>
+        <h1 class="i18n" data-th="🟢 คำชมลูกค้า" data-en="🟢 Customer Compliment">🟢 คำชมลูกค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
     <div class="card">
-        <div class="line-box">
-            <div><span class="i18n" data-th="ผู้รับเรื่อง:" data-en="Receiver:">ผู้รับเรื่อง:</span> <span id="userName">กำลังโหลด...</span></div>
+        <div class="line-user">
+            <div><span class="i18n" data-th="ผู้บันทึก:" data-en="Recorded by:">ผู้บันทึก:</span> <span id="userName">กำลังโหลด...</span></div>
         </div>
 
-        <label class="i18n" data-th="รายละเอียดปัญหาจากลูกค้า" data-en="Complaint Details">รายละเอียดปัญหาจากลูกค้า</label>
-        <textarea id="detail" class="i18n-ph" data-th-ph="ระบุรายละเอียดปัญหา" data-en-ph="Specify problem details"></textarea>
+        <label class="i18n" data-th="รายละเอียดคำชมจากลูกค้า" data-en="Compliment Details">รายละเอียดคำชมจากลูกค้า</label>
+        <textarea id="detail" class="i18n-ph" data-th-ph="เช่น ลูกค้าชื่นชมพนักงานบริการดี ช่วยแนะนำสินค้า" data-en-ph="e.g., Customer praised helpful service"></textarea>
 
         <label class="i18n" data-th="ชื่อลูกค้า / เบอร์ติดต่อ" data-en="Customer Name / Contact">ชื่อลูกค้า / เบอร์ติดต่อ</label>
-        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional">
+        <input id="customer" class="i18n-ph" data-th-ph="ถ้ามี" data-en-ph="Optional" />
 
-        <label class="i18n" data-th="การดำเนินการแก้ไข" data-en="Corrective Action Taken">การดำเนินการแก้ไข</label>
-        <textarea id="requestAction" class="i18n-ph" data-th-ph="หัวหน้างานดำเนินการอย่างไร" data-en-ph="Action taken by supervisor"></textarea>
+        <label class="i18n" data-th="Action จากพนักงาน" data-en="Action Taken">Action จากพนักงาน</label>
+        <textarea id="action" class="i18n-ph" data-th-ph="ดำเนินการอย่างไร" data-en-ph="Action details"></textarea>
 
         <label class="i18n" data-th="สถานะ" data-en="Status">สถานะ</label>
         <select id="status">
@@ -49,15 +49,123 @@
         </select>
 
         <button id="submitBtn" onclick="saveData()" class="i18n" data-th="บันทึกข้อมูล" data-en="Submit Data">บันทึกข้อมูล</button>
-        <div id="msg" class="status"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="เริ่มต้น" data-en="Ready">เริ่มต้น</span></div>
+        <div class="status" id="msg"><span class="i18n" data-th="สถานะ :" data-en="Status :">สถานะ :</span> <span id="status-text" class="i18n" data-th="พร้อมใช้งาน" data-en="Ready">พร้อมใช้งาน</span></div>
     </div>
 </div>
 
 <script>
     const LIFF_ID = "2011171771-2kU5r1Xp";
     const API_URL = "https://script.google.com/macros/s/AKfycbzGCd61ZDWRSXVibhE73_fW8eZX-R-pLlOSAUI5fFPdNdZ3-cUMVGsOAwRNP754ugq8YQ/exec";
-    let lineUser = {};
+    let lineUser = { id: "", name: "" };
     let currentLang = 'TH';
+    let isSubmitting = false;
+    const DUPLICATE_GUARD_MS = 10 * 60 * 1000;
+
+    function normalizeSubmissionValue(value) {
+        return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+    }
+
+    function hashSubmission(value) {
+        let hash = 2166136261;
+        for (let i = 0; i < value.length; i += 1) {
+            hash ^= value.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    }
+
+    function getSubmissionKey(data) {
+        const fingerprint = [
+            data.type,
+            data.requestType,
+            data.detail,
+            data.customer,
+            data.requestAction,
+            data.status,
+            data.lineUserId
+        ].map(normalizeSubmissionValue).join("|");
+        return `villa-s33-submit:${hashSubmission(fingerprint)}`;
+    }
+
+    function readSubmission(key) {
+        try {
+            return JSON.parse(localStorage.getItem(key) || "null");
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function writeSubmission(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (_) {}
+    }
+
+    function removeSubmission(key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (_) {}
+    }
+
+    function createRequestId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+            return window.crypto.randomUUID();
+        }
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function beginSubmission(data) {
+        const key = getSubmissionKey(data);
+        const previous = readSubmission(key);
+        const now = Date.now();
+
+        if (previous && now - previous.createdAt < DUPLICATE_GUARD_MS) {
+            return { blocked: true, state: previous.state };
+        }
+
+        removeSubmission(key);
+        data.requestId = createRequestId();
+        writeSubmission(key, {
+            requestId: data.requestId,
+            state: "pending",
+            createdAt: now
+        });
+        return { blocked: false, key };
+    }
+
+    function updateSubmissionState(key, state) {
+        const current = readSubmission(key) || {};
+        writeSubmission(key, {
+            requestId: current.requestId || "",
+            state,
+            createdAt: current.createdAt || Date.now()
+        });
+    }
+
+    async function readApiResult(response) {
+        const responseText = await response.text();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const trimmed = responseText.trim();
+        if (trimmed === "" || trimmed.toUpperCase() === "OK") {
+            return { success: true };
+        }
+
+        try {
+            return JSON.parse(trimmed);
+        } catch (_) {
+            throw new Error("API returned an invalid response");
+        }
+    }
+
+    function setSubmitBusy(button, busy) {
+        isSubmitting = busy;
+        button.disabled = busy;
+        button.style.opacity = busy ? "0.6" : "1";
+        button.style.cursor = busy ? "not-allowed" : "pointer";
+    }
 
     function switchLanguage(lang) {
         currentLang = lang;
@@ -83,6 +191,7 @@
             lineUser = { id: profile.userId, name: profile.displayName };
             document.getElementById("userName").innerText = profile.displayName;
 
+            // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง
             fetch(`${API_URL}?action=getUserLang&lineUserId=${profile.userId}`)
                 .then(res => res.json())
                 .then(res => {
@@ -107,45 +216,59 @@
 
         } catch (e) {
             document.getElementById("userName").innerText = "ไม่สามารถดึงข้อมูล LINE ได้";
+            document.getElementById("status-text").innerText = "Error: " + e.message;
         }
     }
 
     async function saveData() {
         const submitBtn = document.getElementById("submitBtn");
-        if (submitBtn.disabled) return;
+        if (isSubmitting || submitBtn.disabled) return;
 
         const detail = document.getElementById("detail").value.trim();
         const customer = document.getElementById("customer").value.trim();
-        const requestAction = document.getElementById("requestAction").value.trim();
+        const action = document.getElementById("action").value.trim();
 
         // เช็คทุกช่องต้องกรอก
         if (detail === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียดปัญหา" : "Please enter complaint details");
+            alert(currentLang === 'TH' ? "กรุณากรอกรายละเอียดคำชม" : "Please enter compliment details");
             return;
         }
         if (customer === "") {
             alert(currentLang === 'TH' ? "กรุณากรอกชื่อลูกค้า / เบอร์ติดต่อ" : "Please enter customer name/contact");
             return;
         }
-        if (requestAction === "") {
-            alert(currentLang === 'TH' ? "กรุณากรอกการดำเนินการแก้ไข" : "Please enter corrective action");
+        if (action === "") {
+            alert(currentLang === 'TH' ? "กรุณากรอก Action จากพนักงาน" : "Please enter action taken");
             return;
         }
 
         const data = {
             action: "saveCustomer",
-            type: "คอมเพลนลูกค้า",
+            type: "คำชมลูกค้า",
             detail: detail,
             customer: customer,
-            requestAction: requestAction,
+            requestAction: action,
             status: document.getElementById("status").value,
             userName: lineUser.name,
             lineUserId: lineUser.id
         };
 
-        submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.6";
-        submitBtn.style.cursor = "not-allowed";
+        if (!lineUser.id) {
+            alert(currentLang === 'TH' ? "กรุณารอให้ระบบโหลดข้อมูลผู้บันทึกให้เสร็จก่อน" : "Please wait for the user profile to finish loading");
+            return;
+        }
+
+        const submission = beginSubmission(data);
+        if (submission.blocked) {
+            const message = submission.state === "success"
+                ? (currentLang === 'TH' ? "รายการนี้บันทึกเรียบร้อยแล้ว ไม่ต้องกดซ้ำ" : "This entry has already been saved")
+                : (currentLang === 'TH' ? "รายการนี้ถูกส่งไปแล้ว ระบบอาจบันทึกสำเร็จ กรุณาอย่ากดซ้ำ" : "This entry was already sent. Please do not submit it again");
+            alert(message);
+            return;
+        }
+
+        setSubmitBusy(submitBtn, true);
+        let serverConfirmedFailure = false;
 
         try {
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึกข้อมูล..." : "Saving...";
@@ -154,21 +277,29 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify(data)
             });
-            const result = await response.json();
-            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
-            if (result.success) {
-                liff.closeWindow();
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = "1";
-                submitBtn.style.cursor = "pointer";
-                document.getElementById("status-text").innerText = currentLang === 'TH' ? "เริ่มต้น" : "Ready";
+            const result = await readApiResult(response);
+            if (!result.success) {
+                serverConfirmedFailure = true;
+                removeSubmission(submission.key);
+                throw new Error(result.message || (currentLang === 'TH' ? "บันทึกไม่สำเร็จ" : "Save failed"));
             }
+
+            updateSubmissionState(submission.key, "success");
+            document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved";
+            alert(result.message || (currentLang === 'TH' ? "บันทึกสำเร็จ" : "Saved successfully"));
+            liff.closeWindow();
         } catch (err) {
-            alert(currentLang === 'TH' ? "เกิดข้อผิดพลาดในการบันทึกข้อมูล" : "Error saving data");
-            submitBtn.disabled = false;
-            submitBtn.style.opacity = "1";
-            submitBtn.style.cursor = "pointer";
+            if (serverConfirmedFailure) {
+                alert(err.message);
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกไม่สำเร็จ กรุณาลองใหม่" : "Save failed. Please try again";
+            } else {
+                updateSubmissionState(submission.key, "unknown");
+                alert(currentLang === 'TH'
+                    ? "ระบบไม่สามารถยืนยันผลได้ และข้อมูลอาจบันทึกสำเร็จแล้ว กรุณาตรวจสอบก่อนและอย่ากดซ้ำ"
+                    : "The result could not be confirmed and the entry may already be saved. Please check before retrying");
+                document.getElementById("status-text").innerText = currentLang === 'TH' ? "รอตรวจสอบผล — ห้ามกดซ้ำ" : "Check result — do not resubmit";
+            }
+            setSubmitBusy(submitBtn, false);
         }
     }
 
