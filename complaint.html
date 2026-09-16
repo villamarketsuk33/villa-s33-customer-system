@@ -110,44 +110,51 @@
         return fetchJson(`${API_URL}?${params.toString()}`);
     }
 
-    async function sendSubmission(data) {
-        await fetch(API_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
-            body: JSON.stringify(data),
-            keepalive: true
-        });
+    async function sendSubmission(data, timeoutMs = 20000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                body: JSON.stringify(data),
+                keepalive: true,
+                redirect: "follow",
+                signal: controller.signal
+            });
+            return await readApiResult(response);
+        } finally {
+            clearTimeout(timeoutId);
+        }
     }
 
     async function submitAndConfirm(data) {
-        const delays = [700, 1000, 1500, 2200, 3000];
-        let lastError = null;
-
-        const beforeSave = await checkDuplicate(data);
-        if (!beforeSave.success) throw new Error(beforeSave.message || "ตรวจสอบข้อมูลซ้ำไม่สำเร็จ");
-        if (beforeSave.exists && beforeSave.complete) {
-            return { success: true, duplicate: true, message: "ข้อมูลนี้มีอยู่แล้ว ระบบไม่บันทึกซ้ำ" };
-        }
-
-        await sendSubmission(data);
-
-        for (const delayMs of delays) {
-            await wait(delayMs);
-            try {
-                const status = await checkDuplicate(data);
-                if (!status.success) throw new Error(status.message || "ตรวจสอบผลการบันทึกไม่สำเร็จ");
-                if (status.complete) {
-                    return { success: true, duplicate: false, message: "บันทึกข้อมูลเรียบร้อยแล้ว!" };
-                }
-            } catch (error) {
-                lastError = error;
+        let postError = null;
+        try {
+            const result = await sendSubmission(data);
+            if (!result || result.success !== true) {
+                throw new Error((result && result.message) || "บันทึกข้อมูลไม่สำเร็จ");
             }
+            return result;
+        } catch (error) {
+            postError = error;
         }
 
-        throw new Error(lastError && lastError.message
-            ? lastError.message
-            : "ยังไม่สามารถยืนยันผลการบันทึกได้");
+        // ตรวจยืนยันเพียงครั้งเดียวเมื่ออ่านผล POST ไม่ได้เท่านั้น
+        await wait(1500);
+        try {
+            const status = await checkDuplicate(data);
+            if (status.success && status.complete) {
+                return {
+                    success: true,
+                    duplicate: true,
+                    recovered: true,
+                    message: "บันทึกข้อมูลเรียบร้อยแล้ว ระบบยืนยันจากรายการล่าสุดของคุณ"
+                };
+            }
+        } catch (_) {}
+
+        throw postError || new Error("ยังไม่สามารถยืนยันผลการบันทึกได้");
     }
 
     function setSubmitBusy(button, busy) {
@@ -258,8 +265,8 @@
             liff.closeWindow();
         } catch (err) {
             alert(currentLang === 'TH'
-                ? "ไม่สามารถยืนยันผลได้ สามารถกดบันทึกอีกครั้ง ระบบจะตรวจข้อความรายละเอียดและการดำเนินการก่อนเสมอ"
-                : "The result could not be confirmed. You may retry; details and action are checked before every save.");
+                ? "ยังไม่สามารถยืนยันผลได้ สามารถกดบันทึกอีกครั้ง ระบบจะตรวจ 10 รายการล่าสุดของผู้ใช้และไม่บันทึกข้อความซ้ำ"
+                : "The result could not be confirmed. You may retry; the system checks your 10 latest records before saving.");
             document.getElementById("status-text").innerText = currentLang === 'TH' ? "ยังยืนยันผลไม่ได้ — สามารถลองใหม่" : "Not confirmed — please retry";
             setSubmitBusy(submitBtn, false);
         }
