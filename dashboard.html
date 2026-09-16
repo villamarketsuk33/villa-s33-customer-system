@@ -106,10 +106,10 @@
         
         <!-- Filter Preset Buttons -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 w-full lg:w-auto">
-          <button onclick="setPresetFilter('today')" id="btn-today" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">วันนี้</button>
+          <button onclick="setPresetFilter('today')" id="btn-today" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl bg-blue-900 text-white shadow-sm border border-blue-900 transition active:scale-95">วันนี้</button>
           <button onclick="setPresetFilter('7days')" id="btn-7days" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">7 วันล่าสุด</button>
           <button onclick="setPresetFilter('month')" id="btn-month" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">เดือนนี้</button>
-          <button onclick="setPresetFilter('all')" id="btn-all" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95 active">ทั้งหมด</button>
+          <button onclick="setPresetFilter('all')" id="btn-all" class="filter-btn px-3 py-2 text-xs font-medium rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition active:scale-95">ทั้งหมด</button>
         </div>
 
         <!-- Custom Date Range inputs -->
@@ -338,6 +338,9 @@
     let rawData = [];
     let activeFilteredData = [];
     let currentEmpRecords = [];
+    let currentRangeType = 'today';
+    let currentCustomStart = '';
+    let currentCustomEnd = '';
     let typeChartInstance = null;
     let statusChartInstance = null;
     let currentLineUserId = null;
@@ -345,41 +348,54 @@
     let authTimeoutId = null;
 
     async function fetchApi(params, timeoutMs = 15000) {
-      const url = new URL(LIVE_API_URL);
-      Object.entries(params || {}).forEach(([key, value]) => {
-        url.searchParams.set(key, value == null ? '' : String(value));
-      });
-      url.searchParams.set('_ts', Date.now().toString());
+      const maxAttempts = 3;
+      let lastError = null;
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-      try {
-        const response = await fetch(url.toString(), {
-          method: 'GET',
-          cache: 'no-store',
-          redirect: 'follow',
-          signal: controller.signal
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const url = new URL(LIVE_API_URL);
+        Object.entries(params || {}).forEach(([key, value]) => {
+          url.searchParams.set(key, value == null ? '' : String(value));
         });
-        const responseText = await response.text();
+        url.searchParams.set('_ts', `${Date.now()}-${attempt}`);
 
-        if (!response.ok) {
-          throw new Error(`API ตอบกลับ HTTP ${response.status}`);
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         try {
-          return JSON.parse(responseText);
-        } catch (_) {
-          throw new Error('API ไม่ได้ตอบกลับเป็น JSON — กรุณา Deploy Apps Script เป็นเวอร์ชันใหม่');
+          const response = await fetch(url.toString(), {
+            method: 'GET',
+            cache: 'no-store',
+            redirect: 'follow',
+            signal: controller.signal
+          });
+          const responseText = await response.text();
+
+          if (!response.ok) {
+            const error = new Error(`API ตอบกลับ HTTP ${response.status}`);
+            error.status = response.status;
+            throw error;
+          }
+
+          try {
+            return JSON.parse(responseText);
+          } catch (_) {
+            throw new Error('API ไม่ได้ตอบกลับเป็น JSON — กรุณา Deploy Apps Script เป็นเวอร์ชันใหม่');
+          }
+        } catch (error) {
+          lastError = error && error.name === 'AbortError'
+            ? new Error('หมดเวลารอ Apps Script ตอบกลับ')
+            : error;
+
+          const status = error && error.status;
+          const retryable = !status || status === 404 || status === 429 || status >= 500;
+          if (!retryable || attempt === maxAttempts) break;
+          await new Promise(resolve => setTimeout(resolve, attempt * 700));
+        } finally {
+          clearTimeout(timeoutId);
         }
-      } catch (error) {
-        if (error && error.name === 'AbortError') {
-          throw new Error('หมดเวลารอ Apps Script ตอบกลับ');
-        }
-        throw error;
-      } finally {
-        clearTimeout(timeoutId);
       }
+
+      throw lastError || new Error('ไม่สามารถเชื่อมต่อ Apps Script ได้');
     }
 
     function showDataError(message) {
@@ -455,7 +471,7 @@
         // ✅ ผ่านการตรวจสอบแล้ว — เปิดหน้า Dashboard จริง
         document.getElementById('access-gate').style.display = 'none';
         lucide.createIcons();
-        loadData();
+        setPresetFilter('today');
 
       } catch (e) {
         console.error("LIFF init/auth error:", e);
@@ -507,7 +523,7 @@
       document.getElementById('access-gate').style.display = 'flex';
     }
 
-    async function loadData() {
+    async function loadData(rangeType = currentRangeType, customStart = currentCustomStart, customEnd = currentCustomEnd) {
       const refreshIcon = document.getElementById('refresh-icon');
       const refreshIconMobile = document.getElementById('refresh-icon-mobile');
       
@@ -519,10 +535,17 @@
           throw new Error('ไม่พบ LINE User ID กรุณาเข้าสู่ระบบใหม่');
         }
 
-        const res = await fetchApi({
+        const params = {
           action: 'getDashboardData',
-          lineUserId: currentLineUserId
-        }, 30000);
+          lineUserId: currentLineUserId,
+          range: rangeType || 'today'
+        };
+        if (rangeType === 'custom') {
+          params.startDate = customStart || '';
+          params.endDate = customEnd || '';
+        }
+
+        const res = await fetchApi(params, 30000);
 
         if (!res.success) {
           throw new Error(res.message || res.error || 'Apps Script ปฏิเสธการส่งข้อมูล Dashboard');
@@ -533,7 +556,8 @@
 
         rawData = res.data;
         clearDataError();
-        setPresetFilter('all');
+        updateActiveFilterButton(rangeType);
+        filterAndRenderData(null, null);
       } catch (err) {
         console.error("Fetch API Error:", err);
         // ไม่เขียนทับข้อมูลเดิมเป็นศูนย์ เพราะเลข 0 อาจทำให้เข้าใจผิดว่าไม่มีรายการจริง
@@ -544,7 +568,7 @@
       }
     }
 
-    function setPresetFilter(type) {
+    function updateActiveFilterButton(type) {
       document.querySelectorAll('.filter-btn').forEach(b => {
         b.classList.remove('bg-blue-900', 'text-white', 'shadow-sm', 'border-blue-900');
         b.classList.add('border', 'border-slate-200', 'text-slate-600', 'hover:bg-slate-50');
@@ -555,6 +579,20 @@
         activeBtn.classList.add('bg-blue-900', 'text-white', 'shadow-sm', 'border-blue-900');
         activeBtn.classList.remove('border-slate-200', 'text-slate-600', 'hover:bg-slate-50');
       }
+    }
+
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    async function setPresetFilter(type) {
+      currentRangeType = type || 'today';
+      currentCustomStart = '';
+      currentCustomEnd = '';
+      updateActiveFilterButton(currentRangeType);
 
       const today = new Date();
       let start = null;
@@ -566,7 +604,7 @@
         start.setHours(0,0,0,0);
       } else if (type === '7days') {
         start = new Date();
-        start.setDate(today.getDate() - 7);
+        start.setDate(today.getDate() - 6);
         start.setHours(0,0,0,0);
       } else if (type === 'month') {
         start = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -574,25 +612,31 @@
       }
 
       if (start) {
-        document.getElementById('startDate').value = start.toISOString().split('T')[0];
-        document.getElementById('endDate').value = end.toISOString().split('T')[0];
+        document.getElementById('startDate').value = formatLocalDate(start);
+        document.getElementById('endDate').value = formatLocalDate(end);
       } else {
         document.getElementById('startDate').value = '';
         document.getElementById('endDate').value = '';
       }
 
-      filterAndRenderData(start, end);
+      await loadData(currentRangeType);
     }
 
-    function applyCustomFilter() {
+    async function applyCustomFilter() {
       const sVal = document.getElementById('startDate').value;
       const eVal = document.getElementById('endDate').value;
 
-      const start = sVal ? new Date(sVal) : null;
-      let end = eVal ? new Date(eVal) : null;
-      if (end) end.setHours(23, 59, 59, 999);
+      if (!sVal && !eVal) return;
+      if (sVal && eVal && sVal > eVal) {
+        showDataError('วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด');
+        return;
+      }
 
-      filterAndRenderData(start, end);
+      currentRangeType = 'custom';
+      currentCustomStart = sVal;
+      currentCustomEnd = eVal;
+      updateActiveFilterButton('custom');
+      await loadData('custom', sVal, eVal);
     }
 
     function filterAndRenderData(start, end) {
