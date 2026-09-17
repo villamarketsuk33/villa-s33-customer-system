@@ -113,6 +113,13 @@
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // 🔑 รหัสประจำการส่ง 1 ค่าต่อการกดบันทึก 1 ครั้ง
+    // ถ้าต้อง retry จะใช้ค่าเดิม เซิร์ฟเวอร์จึงรู้ว่าเป็นรายการเดียวกันและไม่บันทึกซ้ำ
+    function newSubmissionId() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
     async function fetchJson(url, timeoutMs = 15000) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -129,16 +136,15 @@
         }
     }
 
-    async function checkDuplicate(data) {
+    // ตรวจย้อนด้วย submissionId — ฝั่งเซิร์ฟเวอร์อ่านจาก Cache ไม่แตะ Google Sheets
+    // จึงตอบกลับเร็วกว่าการไล่เทียบข้อความ 50 แถวแบบเดิมมาก
+    async function checkSubmission(data) {
         const params = new URLSearchParams({
-            action: "checkDuplicate",
-            type: data.type,
-            detail: data.detail,
-            requestAction: data.requestAction,
-            lineUserId: data.lineUserId,
+            action: "checkSubmission",
+            submissionId: data.submissionId,
             _ts: Date.now().toString()
         });
-        return fetchJson(`${API_URL}?${params.toString()}`);
+        return fetchJson(`${API_URL}?${params.toString()}`, 8000);
     }
 
     async function sendSubmission(data, timeoutMs = 20000) {
@@ -171,17 +177,16 @@
             postError = error;
         }
 
-        // ตรวจยืนยันเพียงครั้งเดียวเมื่ออ่านผล POST ไม่ได้เท่านั้น
-        await wait(1500);
+        // อ่านผล POST ไม่ได้ (มักเกิดจาก 302 redirect ของ Apps Script)
+        // ตรวจย้อนด้วย submissionId ว่าจริงๆ แล้วบันทึกสำเร็จไปแล้วหรือไม่
+        await wait(600);
         try {
-            const status = await checkDuplicate(data);
-            if (status.success && status.complete) {
-                return {
-                    success: true,
-                    duplicate: true,
-                    recovered: true,
-                    message: "บันทึกข้อมูลเรียบร้อยแล้ว ระบบยืนยันจากรายการล่าสุดของคุณ"
-                };
+            const status = await checkSubmission(data);
+            if (status.success && status.saved) {
+                return Object.assign(
+                    { success: true, recovered: true, message: "บันทึกข้อมูลเรียบร้อยแล้ว!" },
+                    status.result || {}
+                );
             }
         } catch (_) {}
 
@@ -299,6 +304,7 @@
 
         const data = {
             action: "saveCustomer",
+            submissionId: newSubmissionId(),
             type: "ติดตามสินค้า_2",
             requestType: requestTypes.join(", ") + " | " + villaAvailability,
             villaAvailability: villaAvailability,
