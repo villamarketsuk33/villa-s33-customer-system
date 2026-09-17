@@ -20,6 +20,9 @@
         .status { font-size: 13px; color: #666; margin-top: 15px; }
 
         .checkbox-group { margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .checkbox-group.inline { flex-direction: row; gap: 8px; }
+        .checkbox-group.inline .checkbox-item { flex: 1; min-width: 0; margin-top: 0; padding: 12px 9px; }
+        .checkbox-group.inline .checkbox-item span { font-size: 14px; line-height: 1.35; }
         .checkbox-item { display: flex; align-items: center; background: #f7f9fc; border: 1px solid #ddd; border-radius: 10px; padding: 12px; cursor: pointer; }
         .checkbox-item input[type="checkbox"] { width: auto; margin: 0 10px 0 0; padding: 0; accent-color: #005bbb; transform: scale(1.2); }
         .checkbox-item span { font-weight: normal; }
@@ -38,14 +41,26 @@
         </div>
 
         <label class="i18n" data-th="ประเภทเรื่อง" data-en="Request Type">ประเภทเรื่อง</label>
-        <div class="checkbox-group">
+        <div class="checkbox-group inline">
             <label class="checkbox-item">
-                <input type="checkbox" id="cbAsk" value="ลูกค้าถามหาสินค้า" onclick="selectRequestType('cbAsk')">
+                <input type="checkbox" id="cbAsk" value="ลูกค้าถามหาสินค้า" onclick="selectExclusive('cbAsk', ['cbAsk', 'cbFollow'])">
                 <span class="i18n" data-th="ลูกค้าถามหาสินค้า" data-en="Customer asking for a product">ลูกค้าถามหาสินค้า</span>
             </label>
             <label class="checkbox-item">
-                <input type="checkbox" id="cbFollow" value="ติดตามสินค้าให้ลูกค้า" onclick="selectRequestType('cbFollow')">
+                <input type="checkbox" id="cbFollow" value="ติดตามสินค้าให้ลูกค้า" onclick="selectExclusive('cbFollow', ['cbAsk', 'cbFollow'])">
                 <span class="i18n" data-th="ติดตามสินค้าให้ลูกค้า" data-en="Following up on a product for customer">ติดตามสินค้าให้ลูกค้า</span>
+            </label>
+        </div>
+
+        <label class="i18n" data-th="การมีจำหน่ายในวิลล่า" data-en="Availability at Villa Market">การมีจำหน่ายในวิลล่า</label>
+        <div class="checkbox-group inline">
+            <label class="checkbox-item">
+                <input type="checkbox" id="cbAvailable" value="มีขายในวิลล่า" onclick="selectExclusive('cbAvailable', ['cbAvailable', 'cbUnavailable'])">
+                <span class="i18n" data-th="มีขายในวิลล่า" data-en="Available at Villa Market">มีขายในวิลล่า</span>
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="cbUnavailable" value="ไม่มีขายในวิลล่า" onclick="selectExclusive('cbUnavailable', ['cbAvailable', 'cbUnavailable'])">
+                <span class="i18n" data-th="ไม่มีขายในวิลล่า" data-en="Not available at Villa Market">ไม่มีขายในวิลล่า</span>
             </label>
         </div>
 
@@ -180,9 +195,8 @@
         button.style.cursor = busy ? "not-allowed" : "pointer";
     }
 
-    // ทำให้ checkbox 2 ตัวเลือกได้แค่ตัวเดียว (เหมือน radio button)
-    function selectRequestType(selectedId) {
-        const ids = ['cbAsk', 'cbFollow'];
+    // ทำให้ checkbox ในแต่ละกลุ่มเลือกได้เพียง 1 ตัว (เหมือน radio button)
+    function selectExclusive(selectedId, ids) {
         ids.forEach(id => {
             if (id !== selectedId) document.getElementById(id).checked = false;
         });
@@ -274,10 +288,20 @@
             return;
         }
 
+        let villaAvailability = "";
+        if (document.getElementById("cbAvailable").checked) villaAvailability = document.getElementById("cbAvailable").value;
+        if (document.getElementById("cbUnavailable").checked) villaAvailability = document.getElementById("cbUnavailable").value;
+
+        if (villaAvailability === "") {
+            alert(currentLang === 'TH' ? "กรุณาเลือกว่ามีขายหรือไม่มีขายในวิลล่า" : "Please select Villa Market availability");
+            return;
+        }
+
         const data = {
             action: "saveCustomer",
             type: "ติดตามสินค้า_2",
-            requestType: requestTypes.join(", "),
+            requestType: requestTypes.join(", ") + " | " + villaAvailability,
+            villaAvailability: villaAvailability,
             detail: detail,
             customer: customer,
             requestAction: requestAction,
