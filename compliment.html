@@ -167,6 +167,30 @@
         showBanner(message, "error");
     }
 
+    // Modal ยืนยันบันทึกสำเร็จ — ให้ user กดปิดเอง แทนการปิดหน้าต่างอัตโนมัติ
+    // เพราะปิดเองแบบไม่มีคำอธิบายอาจทำให้ user บางคนเข้าใจว่าฟอร์มมีปัญหา
+    function showSuccessModal(message) {
+        let overlay = document.getElementById("vm-success-modal");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "vm-success-modal";
+            overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:10000;padding:20px;";
+            overlay.innerHTML =
+                '<div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:320px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.25);">' +
+                    '<div style="font-size:44px;line-height:1;margin-bottom:12px;">✅</div>' +
+                    '<div id="vm-success-modal-text" style="font-size:17px;font-weight:bold;color:#222;margin-bottom:20px;line-height:1.5;"></div>' +
+                    '<button id="vm-success-modal-btn" style="width:100%;height:50px;border:none;border-radius:10px;background:#1e7e34;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;"></button>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            document.getElementById("vm-success-modal-btn").onclick = () => {
+                try { liff.closeWindow(); } catch (_) { overlay.style.display = "none"; }
+            };
+        }
+        document.getElementById("vm-success-modal-text").innerText = message;
+        document.getElementById("vm-success-modal-btn").innerText = currentLang === 'TH' ? "ปิดหน้าต่าง" : "Close";
+        overlay.style.display = "flex";
+    }
+
     async function fetchJson(url, timeoutMs = 15000) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -340,21 +364,17 @@
             return;
         }
 
-        // ⚡ เก็บร่างกันหาย แล้วตอบผู้ใช้ว่า "สำเร็จ" ทันที ไม่ต้องรอ network
+        // ⚡ เก็บร่างกันหาย แล้วโชว์ modal ยืนยันทันที — ให้ user กดปิดเอง ชัดเจนกว่าปิดอัตโนมัติ
         saveDraft(data);
         setSubmitBusy(submitBtn, true);
         document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกสำเร็จ!" : "Saved!";
-        showBanner(currentLang === 'TH' ? "✅ บันทึกข้อมูลเรียบร้อยแล้ว" : "✅ Saved successfully", "success");
+        showSuccessModal(currentLang === 'TH' ? "บันทึกข้อมูลเรียบร้อยแล้ว" : "Saved successfully");
 
-        // ส่งข้อมูลจริงเบื้องหลัง (keepalive ทำให้คำขอยังถูกส่งต่อแม้ liff.closeWindow()
-        // จะปิดหน้าไปแล้ว) ถ้าสุดท้ายยืนยันไม่ได้จริงๆ จะไปเช็ค/ส่งซ้ำตอนเปิดฟอร์มครั้งถัดไป
+        // ส่งข้อมูลจริงเบื้องหลัง (keepalive ทำให้คำขอยังถูกส่งต่อแม้ user กดปิดหน้าต่างไปแล้ว)
+        // ถ้าสุดท้ายยืนยันไม่ได้จริงๆ จะไปเช็ค/ส่งซ้ำตอนเปิดฟอร์มครั้งถัดไป
         submitAndConfirm(data)
             .then(() => clearDraft(data.submissionId))
             .catch(err => console.log("ยังไม่ยืนยันผลบันทึกเบื้องหลัง จะลองใหม่ตอนเปิดฟอร์มครั้งถัดไป:", err));
-
-        // หน่วงสั้นๆ พอให้ browser เริ่มส่งคำขอไปจริงก่อนปิดหน้าต่าง
-        await wait(350);
-        liff.closeWindow();
     }
 
     initLINE();
