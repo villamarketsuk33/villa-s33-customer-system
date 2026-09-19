@@ -25,11 +25,11 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 pb-10 font-sans antialiased selection:bg-red-500 selection:text-white">
 
-  <!-- 🔒 Access Gate: บังหน้าจอทั้งหมดไว้จนกว่าจะตรวจสอบสิทธิ์ Manager เสร็จ -->
+  <!-- 🔒 Access Gate: บังหน้าจอไว้จนกว่า LINE จะยืนยันบัญชีและพบรายชื่อพนักงาน (ทุกตำแหน่ง) -->
   <div id="access-gate" class="fixed inset-0 bg-white z-[100] flex items-center justify-center">
     <div id="access-gate-content" class="text-center px-6">
       <div class="animate-spin w-10 h-10 border-4 border-blue-900 border-t-transparent rounded-full mx-auto mb-4"></div>
-      <p class="text-slate-500 text-sm">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
+      <p class="text-slate-500 text-sm">กำลังตรวจสอบบัญชีพนักงาน...</p>
     </div>
   </div>
 
@@ -347,55 +347,110 @@
     let authResolved = false;
     let authTimeoutId = null;
 
+    // ส่ง access token ใน POST body เท่านั้น และให้ Apps Script ตรวจบัญชีกับ LINE
     async function fetchApi(params, timeoutMs = 15000) {
       const maxAttempts = 3;
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const url = new URL(LIVE_API_URL);
-        Object.entries(params || {}).forEach(([key, value]) => {
-          url.searchParams.set(key, value == null ? '' : String(value));
-        });
-        url.searchParams.set('_ts', `${Date.now()}-${attempt}`);
-
+        const accessToken = liff.isLoggedIn() ? liff.getAccessToken() : null;
+        if (!accessToken) {
+          const error = new Error('กรุณาเข้าสู่ระบบผ่าน LINE ใหม่');
+          error.code = 'AUTH_REQUIRED';
+          throw error;
+        }
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
         try {
-          const response = await fetch(url.toString(), {
-            method: 'GET',
+          const response = await fetch(LIVE_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body: JSON.stringify({ ...params, accessToken }),
             cache: 'no-store',
             redirect: 'follow',
             signal: controller.signal
           });
           const responseText = await response.text();
-
           if (!response.ok) {
             const error = new Error(`API ตอบกลับ HTTP ${response.status}`);
             error.status = response.status;
             throw error;
           }
 
+          let result;
           try {
-            return JSON.parse(responseText);
+            result = JSON.parse(responseText);
           } catch (_) {
             throw new Error('API ไม่ได้ตอบกลับเป็น JSON — กรุณา Deploy Apps Script เป็นเวอร์ชันใหม่');
           }
+          if (!result || typeof result !== 'object' || Array.isArray(result)) {
+            throw new Error('รูปแบบข้อมูลตอบกลับจาก Dashboard ไม่ถูกต้อง');
+          }
+          if (result.success === false) {
+            const error = new Error(result.message || 'ไม่สามารถโหลด Dashboard ได้');
+            error.code = result.code || 'DASHBOARD_API_ERROR';
+            throw error;
+          }
+          return result;
         } catch (error) {
           lastError = error && error.name === 'AbortError'
             ? new Error('หมดเวลารอ Apps Script ตอบกลับ')
             : error;
-
           const status = error && error.status;
-          const retryable = !status || status === 404 || status === 429 || status >= 500;
+          // ปัญหาสิทธิ์ต้องให้ผู้ใช้แก้ ไม่ส่ง token เดิมซ้ำอัตโนมัติ
+          const retryable = !error.code && (!status || status === 404 || status === 429 || status >= 500);
           if (!retryable || attempt === maxAttempts) break;
           await new Promise(resolve => setTimeout(resolve, attempt * 700));
         } finally {
           clearTimeout(timeoutId);
         }
       }
-
       throw lastError || new Error('ไม่สามารถเชื่อมต่อ Apps Script ได้');
+    }
+
+    function clearDashboardSession() {
+      currentLineUserId = null;
+      rawData = [];
+      activeFilteredData = [];
+      currentEmpRecords = [];
+      ['empTableBody', 'modalContent', 'fullRecordContent'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
+      document.getElementById('modalTitle').textContent = 'ประวัติการบันทึกข้อมูล';
+      document.getElementById('emp-count-label').textContent = 'พนักงาน 0 คน';
+      renderOverview([]);
+      if (typeChartInstance) { typeChartInstance.destroy(); typeChartInstance = null; }
+      if (statusChartInstance) { statusChartInstance.destroy(); statusChartInstance = null; }
+      closeModal();
+      closeFullRecordModal();
+    }
+
+    function handleDashboardAccessError(error) {
+      const code = (error && error.code) || '';
+      if (['AUTH_REQUIRED', 'AUTH_INVALID'].includes(code)) {
+        clearDashboardSession();
+        try { liff.logout(); } catch (_) {}
+        showRetryUI('🔑 กรุณาเข้าสู่ระบบ', 'กรุณาเข้าสู่ระบบผ่าน LINE เพื่อดู Dashboard');
+        return true;
+      }
+      if (code === 'NOT_REGISTERED') {
+        clearDashboardSession();
+        showAccessDenied('⚠️ ไม่พบข้อมูลพนักงาน', 'กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ');
+        return true;
+      }
+      if (['DASHBOARD_CONFIG_MISSING', 'DASHBOARD_EMPLOYEES_UNAVAILABLE', 'AUTH_CHANNEL_MISMATCH', 'AUTH_SCOPE_REQUIRED'].includes(code)) {
+        clearDashboardSession();
+        showAccessDenied('⚠️ ยังเปิด Dashboard ไม่ได้', error.message || 'กรุณาติดต่อผู้ดูแลระบบ');
+        return true;
+      }
+      return false;
+    }
+
+    function dashboardEscapeText(value) {
+      const element = document.createElement('span');
+      element.textContent = String(value == null ? '' : value);
+      return element.innerHTML;
     }
 
     function showDataError(message) {
@@ -425,70 +480,42 @@
     window.onload = function() {
       lucide.createIcons();
       initLIFFAndCheckAccess();
-
-      // ⏱️ กันเหนียว: ถ้าตรวจสอบสิทธิ์นานเกิน 10 วินาที (ไม่ว่าจะติดขั้นตอนไหน)
-      // ให้โชว์ปุ่มลองใหม่แทนที่จะปล่อยให้ spinner ค้างตลอดไป
-      authTimeoutId = setTimeout(() => {
-        if (!authResolved) {
-          showRetryUI("⏱️ ใช้เวลานานเกินไป", "การตรวจสอบสิทธิ์ใช้เวลานานผิดปกติ กรุณาลองใหม่อีกครั้ง");
-        }
-      }, 10000);
     };
 
-    // 🔒 ล็อกอินผ่าน LIFF แล้วเช็ก role ก่อนปล่อยให้เห็นหน้า Dashboard จริง
+    // พนักงานทุกตำแหน่งดูได้: ตรวจบัญชี LINE และทะเบียนพนักงานที่เซิร์ฟเวอร์
     async function initLIFFAndCheckAccess() {
+      authResolved = false;
+      clearTimeout(authTimeoutId);
+      authTimeoutId = setTimeout(() => {
+        if (!authResolved) {
+          showRetryUI('⏱️ ใช้เวลานานเกินไป', 'กำลังเชื่อมต่อระบบ กรุณารอสักครู่หรือกดลองใหม่');
+        }
+      }, 15000);
       try {
         await liff.init({ liffId: LIFF_ID });
-
         if (!liff.isLoggedIn()) {
-          showRetryUI(
-            "🔑 ต้องเข้าสู่ระบบก่อน",
-            "กรุณากดปุ่มด้านล่างเพื่อเข้าสู่ระบบผ่าน LINE"
-          );
+          showRetryUI('🔑 ต้องเข้าสู่ระบบก่อน', 'กรุณากดปุ่มด้านล่างเพื่อเข้าสู่ระบบผ่าน LINE');
           return;
         }
 
-        const profile = await liff.getProfile();
-        currentLineUserId = profile.userId;
-
-        const res = await fetchApi({
-          action: 'getUserLang',
-          lineUserId: currentLineUserId
-        });
-
+        const res = await fetchApi({ action: 'getDashboardAccess' });
+        if (res.success !== true || res.registered !== true || !res.lineUserId) {
+          throw new Error('ยังตรวจสอบบัญชีพนักงานไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ');
+        }
+        currentLineUserId = res.lineUserId;
         authResolved = true;
         clearTimeout(authTimeoutId);
-
-        if (!res.registered) {
-          showAccessDenied("⚠️ ไม่พบข้อมูลพนักงาน", "กรุณาลงทะเบียนพนักงานก่อนเข้าใช้งานระบบ");
-          return;
-        }
-        if ((res.role || '').toString().trim().toLowerCase() !== "manager") {
-          showAccessDenied("⚠️ ไม่มีสิทธิ์เข้าถึง", "หน้า Dashboard นี้สำหรับ Manager เท่านั้น");
-          return;
-        }
-
-        // ✅ ผ่านการตรวจสอบแล้ว — เปิดหน้า Dashboard จริง
         document.getElementById('access-gate').style.display = 'none';
         lucide.createIcons();
-        setPresetFilter('today');
-
-      } catch (e) {
-        console.error("LIFF init/auth error:", e);
+        await setPresetFilter('today');
+      } catch (error) {
+        console.error('Dashboard login failed:', error.code || error.name || 'unknown');
+        if (!handleDashboardAccessError(error)) {
+          showRetryUI('⚠️ ยังเชื่อมต่อระบบไม่ได้', 'กรุณาลองใหม่อีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อผู้ดูแลระบบ');
+        }
+      } finally {
         authResolved = true;
         clearTimeout(authTimeoutId);
-        const msg = ((e && e.message) || "").toLowerCase();
-        const isTokenIssue = msg.includes("token") || msg.includes("expired") || msg.includes("forbidden");
-
-        if (isTokenIssue) {
-          // Token เก่าหมดอายุ/ใช้ไม่ได้ — เคลียร์ session เก่า แล้วให้ผู้ใช้กดล็อกอินใหม่เอง
-          // (ไม่ auto-redirect เพื่อกัน loop ที่ทำให้ค้างเป็น spinner ตลอดไป)
-          try { liff.logout(); } catch (_) {}
-          showRetryUI("🔄 เซสชันหมดอายุ", "กรุณากดปุ่มด้านล่างเพื่อเข้าสู่ระบบใหม่อีกครั้ง");
-          return;
-        }
-
-        showRetryUI("⚠️ เกิดข้อผิดพลาด", "ไม่สามารถตรวจสอบสิทธิ์ได้ (" + (e.message || "unknown error") + ")");
       }
     }
 
@@ -497,10 +524,10 @@
       document.getElementById('access-gate-content').innerHTML = `
         <div class="text-center px-6 max-w-sm">
           <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🔄</div>
-          <h2 class="text-lg font-bold text-slate-800 mb-2">${title}</h2>
-          <p class="text-slate-500 text-sm mb-5">${message}</p>
+          <h2 class="text-lg font-bold text-slate-800 mb-2">${dashboardEscapeText(title)}</h2>
+          <p class="text-slate-500 text-sm mb-5">${dashboardEscapeText(message)}</p>
           <button onclick="retryLogin()" class="px-5 py-2.5 bg-blue-900 hover:bg-blue-950 text-white text-sm font-semibold rounded-xl transition w-full">
-            เข้าสู่ระบบใหม่
+            เข้าสู่ระบบ / ลองใหม่
           </button>
         </div>
       `;
@@ -508,16 +535,21 @@
     }
 
     function retryLogin() {
-      authResolved = false;
-      liff.login({ redirectUri: window.location.href });
+      // รีโหลดให้ LIFF เริ่มใหม่ได้ แม้ครั้งก่อน SDK ยังไม่พร้อม
+      try {
+        if (liff.isLoggedIn()) { window.location.reload(); return; }
+        liff.login({ redirectUri: window.location.href });
+      } catch (_) {
+        window.location.reload();
+      }
     }
 
     function showAccessDenied(title, message) {
       document.getElementById('access-gate-content').innerHTML = `
         <div class="text-center px-6 max-w-sm">
           <div class="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⚠️</div>
-          <h2 class="text-lg font-bold text-slate-800 mb-2">${title}</h2>
-          <p class="text-slate-500 text-sm">${message}</p>
+          <h2 class="text-lg font-bold text-slate-800 mb-2">${dashboardEscapeText(title)}</h2>
+          <p class="text-slate-500 text-sm">${dashboardEscapeText(message)}</p>
         </div>
       `;
       document.getElementById('access-gate').style.display = 'flex';
@@ -532,12 +564,13 @@
 
       try {
         if (!currentLineUserId) {
-          throw new Error('ไม่พบ LINE User ID กรุณาเข้าสู่ระบบใหม่');
+          const error = new Error('กรุณาเข้าสู่ระบบผ่าน LINE ใหม่');
+          error.code = 'AUTH_REQUIRED';
+          throw error;
         }
 
         const params = {
           action: 'getDashboardData',
-          lineUserId: currentLineUserId,
           range: rangeType || 'today'
         };
         if (rangeType === 'custom') {
@@ -546,6 +579,8 @@
         }
 
         const res = await fetchApi(params, 30000);
+        // คำขออื่นอาจตรวจพบว่าเซสชันสิ้นสุดระหว่างรอข้อมูล
+        if (!currentLineUserId) return;
 
         if (!res.success) {
           throw new Error(res.message || res.error || 'Apps Script ปฏิเสธการส่งข้อมูล Dashboard');
@@ -559,8 +594,9 @@
         updateActiveFilterButton(rangeType);
         filterAndRenderData(null, null);
       } catch (err) {
-        console.error("Fetch API Error:", err);
-        // ไม่เขียนทับข้อมูลเดิมเป็นศูนย์ เพราะเลข 0 อาจทำให้เข้าใจผิดว่าไม่มีรายการจริง
+        console.error('Dashboard fetch failed:', err.code || err.name || 'unknown');
+        if (handleDashboardAccessError(err)) return;
+        // ไม่เขียนทับข้อมูลเดิมเป็นศูนย์เมื่อเครือข่ายขัดข้อง
         showDataError(err && err.message ? err.message : 'ไม่สามารถเชื่อมต่อ Apps Script ได้');
       } finally {
         if (refreshIcon) refreshIcon.classList.remove('animate-spin');
