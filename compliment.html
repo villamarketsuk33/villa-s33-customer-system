@@ -89,63 +89,6 @@
         return "s-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
     }
 
-    // ==============================================================
-    // ⚡ Optimistic UI — ตอบผู้ใช้ทันทีโดยไม่รอผลจาก network
-    // แนวคิด: เก็บร่างกันหายไว้ก่อน แล้วโชว์ผล "สำเร็จ" ทันที ปิดฟอร์มเร็ว
-    // ส่วนคำขอจริงยิงไปเบื้องหลังด้วย keepalive ต่อให้ปิดหน้าไปแล้วก็ยังส่งต่อ
-    // ถ้าสุดท้ายจริงๆ แล้วยืนยันไม่ได้ จะไปเช็ค/ส่งซ้ำเงียบๆ ตอนเปิดฟอร์มครั้งถัดไป
-    // (ปลอดภัยเพราะใช้ submissionId เดิม + backend เช็คซ้ำจากเนื้อหาอยู่แล้ว)
-    // ==============================================================
-    const DRAFT_PREFIX = "vm_draft_";
-
-    function saveDraft(data) {
-        try {
-            localStorage.setItem(DRAFT_PREFIX + data.submissionId, JSON.stringify({ data: data, ts: Date.now() }));
-        } catch (_) { /* localStorage เต็มหรือถูกปิด ไม่กระทบการทำงานหลัก */ }
-    }
-
-    function clearDraft(submissionId) {
-        try { localStorage.removeItem(DRAFT_PREFIX + submissionId); } catch (_) {}
-    }
-
-    function listDrafts() {
-        const drafts = [];
-        try {
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.indexOf(DRAFT_PREFIX) === 0) {
-                    try { drafts.push(JSON.parse(localStorage.getItem(key))); } catch (_) {}
-                }
-            }
-        } catch (_) {}
-        return drafts;
-    }
-
-    // ตรวจร่างค้างจากรอบก่อนที่ปิดฟอร์มไปแล้วแต่ยังไม่ยืนยันผล ทำงานเงียบๆ เบื้องหลัง
-    async function reconcilePendingDrafts() {
-        const drafts = listDrafts();
-        for (const draft of drafts) {
-            if (!draft || !draft.data || !draft.data.submissionId) continue;
-            try {
-                const status = await checkSubmission(draft.data);
-                if (status.success && status.saved) {
-                    clearDraft(draft.data.submissionId);
-                    continue;
-                }
-            } catch (_) {}
-
-            // ยังไม่ยืนยัน และเก่ากว่า 20 วิ — ลองส่งซ้ำเงียบๆ (ปลอดภัย ใช้ submissionId เดิม)
-            if (Date.now() - (draft.ts || 0) > 20000) {
-                try { await sendSubmission(draft.data); } catch (_) { /* ไปลองใหม่รอบถัดไป */ }
-            }
-
-            // เกิน 20 นาทีไม่สำเร็จเลย เลิกพยายาม กันร่างค้างสะสมไม่รู้จบ
-            if (Date.now() - (draft.ts || 0) > 20 * 60 * 1000) {
-                clearDraft(draft.data.submissionId);
-            }
-        }
-    }
-
     // แจ้งเตือนแบบไม่บล็อกหน้าจอ (แทน alert ที่ทำให้รู้สึกสะดุด/กระตุก)
     function showBanner(message, type) {
         let banner = document.getElementById("vm-banner");
@@ -236,32 +179,36 @@
         }
     }
 
-    async function submitAndConfirm(data) {
-        let postError = null;
-        try {
-            const result = await sendSubmission(data);
-            if (!result || result.success !== true) {
-                throw new Error((result && result.message) || "บันทึกข้อมูลไม่สำเร็จ");
+    // 🔁 ยิงซ้ำอัตโนมัติสูงสุด 3 ครั้งขณะที่ user ยังอยู่หน้าจอเดิม (ปุ่ม disabled รออยู่)
+    // ปลอดภัยเพราะใช้ submissionId เดิมทุกครั้ง เซิร์ฟเวอร์เช็คซ้ำได้จาก Cache/Sheet
+    // แตกต่างจากของเดิมตรงที่ "ไม่ปิดหน้าต่างจนกว่าจะรู้ผลจริง" — ไม่มี background retry
+    async function submitAndConfirm(data, onProgress) {
+        const maxAttempts = 3;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                if (onProgress) onProgress(attempt, maxAttempts);
+                const result = await sendSubmission(data);
+                if (result && result.success === true) return result;
+                lastError = new Error((result && result.message) || "บันทึกไม่สำเร็จ");
+            } catch (error) {
+                lastError = error;
             }
-            return result;
-        } catch (error) {
-            postError = error;
+
+            // อ่านผลไม่ได้ (มักเกิดจาก 302 redirect ของ Apps Script) หรือ network สะดุด
+            // ตรวจย้อนด้วย submissionId ก่อนตัดสินใจ retry เผื่อจริงๆ บันทึกสำเร็จไปแล้ว
+            try {
+                const status = await checkSubmission(data);
+                if (status.success && status.saved) {
+                    return Object.assign({ success: true, recovered: true }, status.result || {});
+                }
+            } catch (_) {}
+
+            if (attempt < maxAttempts) await wait(1500 * attempt); // 1.5s, 3s ก่อน retry รอบถัดไป
         }
 
-        // อ่านผล POST ไม่ได้ (มักเกิดจาก 302 redirect ของ Apps Script)
-        // ตรวจย้อนด้วย submissionId ว่าจริงๆ แล้วบันทึกสำเร็จไปแล้วหรือไม่
-        await wait(600);
-        try {
-            const status = await checkSubmission(data);
-            if (status.success && status.saved) {
-                return Object.assign(
-                    { success: true, recovered: true, message: "บันทึกข้อมูลเรียบร้อยแล้ว!" },
-                    status.result || {}
-                );
-            }
-        } catch (_) {}
-
-        throw postError || new Error("ยังไม่สามารถยืนยันผลการบันทึกได้");
+        throw lastError || new Error("ยังไม่สามารถยืนยันผลการบันทึกได้");
     }
 
     function setSubmitBusy(button, busy) {
@@ -293,7 +240,6 @@
             }
             const profile = await liff.getProfile();
             lineUser = { id: profile.userId, name: profile.displayName };
-            reconcilePendingDrafts(); // เช็คร่างค้างจากรอบก่อนเงียบๆ เบื้องหลัง ไม่บล็อก UI
             document.getElementById("userName").innerText = profile.displayName;
 
             // เช็กสิทธิ์และภาษาจากระบบ Employee_Master เบื้องหลัง
@@ -364,17 +310,24 @@
             return;
         }
 
-        // ⚡ เก็บร่างกันหาย แล้วโชว์ modal ยืนยันทันที — ให้ user กดปิดเอง ชัดเจนกว่าปิดอัตโนมัติ
-        saveDraft(data);
+        // ⏳ บันทึกจริงแบบรอผลก่อนปิดหน้าต่าง — ไม่ใช่ Optimistic UI อีกต่อไป
         setSubmitBusy(submitBtn, true);
-        document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกสำเร็จ!" : "Saved!";
-        showSuccessModal(currentLang === 'TH' ? "บันทึกข้อมูลเรียบร้อยแล้ว" : "Saved successfully");
+        document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึก..." : "Saving...";
 
-        // ส่งข้อมูลจริงเบื้องหลัง (keepalive ทำให้คำขอยังถูกส่งต่อแม้ user กดปิดหน้าต่างไปแล้ว)
-        // ถ้าสุดท้ายยืนยันไม่ได้จริงๆ จะไปเช็ค/ส่งซ้ำตอนเปิดฟอร์มครั้งถัดไป
-        submitAndConfirm(data)
-            .then(() => clearDraft(data.submissionId))
-            .catch(err => console.log("ยังไม่ยืนยันผลบันทึกเบื้องหลัง จะลองใหม่ตอนเปิดฟอร์มครั้งถัดไป:", err));
+        try {
+            await submitAndConfirm(data, (attempt, max) => {
+                if (attempt > 1) {
+                    const msg = currentLang === 'TH' ? `กำลังลองใหม่ (${attempt}/${max})...` : `Retrying (${attempt}/${max})...`;
+                    document.getElementById("status-text").innerText = msg;
+                }
+            });
+            document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกสำเร็จ!" : "Saved!";
+            showSuccessModal(currentLang === 'TH' ? "บันทึกข้อมูลเรียบร้อยแล้ว" : "Saved successfully");
+        } catch (err) {
+            setSubmitBusy(submitBtn, false);
+            document.getElementById("status-text").innerText = currentLang === 'TH' ? "บันทึกไม่สำเร็จ" : "Save failed";
+            showError(currentLang === 'TH' ? "บันทึกไม่สำเร็จ กรุณากดบันทึกอีกครั้ง" : "Save failed, please try again");
+        }
     }
 
     initLINE();
