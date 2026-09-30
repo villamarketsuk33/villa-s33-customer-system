@@ -353,12 +353,9 @@
       let lastError = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        const accessToken = liff.isLoggedIn() ? liff.getAccessToken() : null;
-        if (!accessToken) {
-          const error = new Error('กรุณาเข้าสู่ระบบผ่าน LINE ใหม่');
-          error.code = 'AUTH_REQUIRED';
-          throw error;
-        }
+        // เอาการเช็ค accessToken ออก ส่งแค่ dummy token หรือปล่อยว่างได้
+        const accessToken = "bypass"; 
+        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -371,6 +368,7 @@
             redirect: 'follow',
             signal: controller.signal
           });
+         
           const responseText = await response.text();
           if (!response.ok) {
             const error = new Error(`API ตอบกลับ HTTP ${response.status}`);
@@ -484,39 +482,17 @@
 
     // พนักงานทุกตำแหน่งดูได้: ตรวจบัญชี LINE และทะเบียนพนักงานที่เซิร์ฟเวอร์
     async function initLIFFAndCheckAccess() {
-      authResolved = false;
-      clearTimeout(authTimeoutId);
-      authTimeoutId = setTimeout(() => {
-        if (!authResolved) {
-          showRetryUI('⏱️ ใช้เวลานานเกินไป', 'กำลังเชื่อมต่อระบบ กรุณารอสักครู่หรือกดลองใหม่');
-        }
-      }, 15000);
-      try {
-        await liff.init({ liffId: LIFF_ID });
-        if (!liff.isLoggedIn()) {
-          showRetryUI('🔑 ต้องเข้าสู่ระบบก่อน', 'กรุณากดปุ่มด้านล่างเพื่อเข้าสู่ระบบผ่าน LINE');
-          return;
-        }
-
-        const res = await fetchApi({ action: 'getDashboardAccess' });
-        if (res.success !== true || res.registered !== true || !res.lineUserId) {
-          throw new Error('ยังตรวจสอบบัญชีพนักงานไม่สำเร็จ กรุณาติดต่อผู้ดูแลระบบ');
-        }
-        currentLineUserId = res.lineUserId;
-        authResolved = true;
-        clearTimeout(authTimeoutId);
-        document.getElementById('access-gate').style.display = 'none';
-        lucide.createIcons();
-        await setPresetFilter('today');
-      } catch (error) {
-        console.error('Dashboard login failed:', error.code || error.name || 'unknown');
-        if (!handleDashboardAccessError(error)) {
-          showRetryUI('⚠️ ยังเชื่อมต่อระบบไม่ได้', 'กรุณาลองใหม่อีกครั้ง หากยังเข้าไม่ได้ให้ติดต่อผู้ดูแลระบบ');
-        }
-      } finally {
-        authResolved = true;
-        clearTimeout(authTimeoutId);
-      }
+      // ซ่อนหน้าต่าง Access Gate ทันที
+      document.getElementById('access-gate').style.display = 'none';
+      
+      // ให้สิทธิ์ผ่านทันที
+      currentLineUserId = "guest"; 
+      authResolved = true;
+      lucide.createIcons();
+      
+      // สั่งโหลดข้อมูลวันนี้เลย
+      await setPresetFilter('today');
+    
     }
 
     // 🔁 ปุ่มลองล็อกอิน/ตรวจสอบใหม่ด้วยตัวเอง (ผู้ใช้กดเอง แทนการ auto-redirect ที่เสี่ยง loop)
@@ -563,11 +539,6 @@
       if (refreshIconMobile) refreshIconMobile.classList.add('animate-spin');
 
       try {
-        if (!currentLineUserId) {
-          const error = new Error('กรุณาเข้าสู่ระบบผ่าน LINE ใหม่');
-          error.code = 'AUTH_REQUIRED';
-          throw error;
-        }
 
         const params = {
           action: 'getDashboardData',
