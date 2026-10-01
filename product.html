@@ -32,7 +32,7 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ลูกค้าสอบถาม/ติดตามสินค้า</h1>
+        <h1 class="i18n" data-th="🔵 ติดตามสินค้า" data-en="🔵 Product Tracking">🔵 ]ลูกค้าสอบถาม/ติดตามสินค้า</h1>
         <p>Villa Market สุขุมวิท 33</p>
     </div>
 
@@ -243,25 +243,6 @@
         throw lastError || new Error("ยังไม่สามารถยืนยันผลการบันทึกได้");
     }
 
-    // 🔍 เช็คซ้ำแบบเบา ก่อนบันทึกจริง — อ่านแค่ 50 แถวท้ายของชีตปลายทาง จึงเร็ว (ปกติ < 1 วิ)
-    // ถ้าเช็คไม่สำเร็จ/หมดเวลา (เช่น เน็ตสะดุด) จะไม่บล็อกผู้ใช้ ปล่อยให้ไปบันทึกจริง
-    // เพราะ backend มีด่านเช็คซ้ำอีกชั้นตอนบันทึกอยู่แล้ว (checkMasterDuplicate)
-    async function checkDuplicateBeforeSave(data) {
-        try {
-            const params = new URLSearchParams({
-                action: "checkDuplicate",
-                type: data.type,
-                detail: data.detail,
-                requestAction: data.requestAction,
-                lineUserId: data.lineUserId,
-                _ts: Date.now().toString()
-            });
-            return await fetchJson(`${API_URL}?${params.toString()}`, 5000);
-        } catch (_) {
-            return { success: false, exists: false };
-        }
-    }
-
     function setSubmitBusy(button, busy) {
         isSubmitting = busy;
         button.disabled = busy;
@@ -391,17 +372,9 @@
         }
 
         // ⏳ บันทึกจริงแบบรอผลก่อนปิดหน้าต่าง — ไม่ใช่ Optimistic UI อีกต่อไป
+        // (ตัดการเช็คซ้ำก่อนบันทึกออกแล้ว เพื่อความเร็ว — backend เช็คซ้ำทั้งวันให้อัตโนมัติ
+        //  ทุกครั้งที่บันทึกจริงอยู่แล้วผ่าน checkMasterDuplicate ไม่ต้องเช็คล่วงหน้าซ้ำอีกชั้น)
         setSubmitBusy(submitBtn, true);
-        document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังตรวจสอบ..." : "Checking...";
-
-        const dupCheck = await checkDuplicateBeforeSave(data);
-        if (dupCheck && dupCheck.exists) {
-            setSubmitBusy(submitBtn, false);
-            document.getElementById("status-text").innerText = currentLang === 'TH' ? "พบรายการซ้ำ" : "Duplicate found";
-            showError(currentLang === 'TH' ? "รายการนี้ถูกบันทึกไปแล้วเมื่อครู่ ระบบไม่ได้บันทึกซ้ำ" : "This item was already recorded recently. Not saved again.");
-            return;
-        }
-
         document.getElementById("status-text").innerText = currentLang === 'TH' ? "กำลังบันทึก..." : "Saving...";
 
         try {
